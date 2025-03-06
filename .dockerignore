@@ -1,0 +1,42 @@
+ # 版本控制
+.git
+.github
+.gitignore
+
+# 依赖目录
+node_modules
+npm-debug.log
+
+# 构建输出
+.next
+out
+dist
+build
+
+# 开发环境文件
+.env.local
+.env.development
+.env.development.local
+.env*.local
+
+# 测试文件
+__tests__
+coverage
+*.test.js
+*.spec.js
+
+# 编辑器配置
+.idea
+.vscode
+*.swp
+*.swo
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 文档和其他不需要的文件
+README.md
+LICENSE
+*.md
+docs
