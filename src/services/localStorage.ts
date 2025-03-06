@@ -96,4 +96,16 @@ export const saveCurrentConversation = (conversation: Conversation): void => {
   }
   
   saveConversations(conversations);
+};
+
+export const deleteConversation = (conversationId: string): void => {
+  const conversations = getConversations();
+  const updatedConversations = conversations.filter(conv => conv.id !== conversationId);
+  saveConversations(updatedConversations);
+  
+  // 如果删除的是当前对话，清除当前对话ID
+  const currentConversationId = localStorage.getItem('currentConversationId');
+  if (currentConversationId === conversationId) {
+    localStorage.removeItem('currentConversationId');
+  }
 }; 

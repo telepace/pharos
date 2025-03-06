@@ -1,0 +1,30 @@
+/* 拖动条样式 */
+.resize-handle {
+  position: relative;
+  width: 4px;
+  background: #f0f0f0;
+  cursor: col-resize;
+  transition: background-color 0.2s;
+}
+
+.resize-handle:hover,
+.resize-handle.active {
+  background: #1890ff;
+}
+
+/* 拖动时的遮罩层，防止选中文本 */
+.resize-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  cursor: col-resize;
+}
+
+/* 优化拖动时的性能 */
+.resizing * {
+  user-select: none !important;
+  pointer-events: none !important;
+} 

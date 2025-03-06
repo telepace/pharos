@@ -20,9 +20,12 @@ export interface Message {
 
 export interface Conversation {
   id: string;
+  name: string;
   messages: Message[];
   activePromptId: string | null;
   sceneId: string | null;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export enum LLMModel {

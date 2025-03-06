@@ -6,15 +6,24 @@ import { usePromptContext } from './PromptContext';
 import { useSceneContext } from './SceneContext';
 import { 
   getCurrentConversation, 
-  saveCurrentConversation 
+  saveCurrentConversation,
+  getConversations,
+  saveConversations,
+  deleteConversation
 } from '../services/localStorage';
 import { LLMModel } from '../types';
 
 interface ChatContextType {
+  conversations: Conversation[];
+  currentConversation: Conversation | null;
   messages: Message[];
   isLoading: boolean;
   sendMessage: (content: string) => Promise<void>;
   clearMessages: () => void;
+  createNewConversation: () => void;
+  switchConversation: (conversationId: string) => void;
+  renameConversation: (conversationId: string, newName: string) => void;
+  deleteConversation: (conversationId: string) => void;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -32,6 +41,7 @@ interface ChatProviderProps {
 }
 
 export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -39,26 +49,21 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   const { getActivePrompt } = usePromptContext();
   const { activeSceneId } = useSceneContext();
 
-  // 初始化对话
+  // 初始化对话列表
   useEffect(() => {
-    const storedConversation = getCurrentConversation();
+    const storedConversations = getConversations();
+    setConversations(storedConversations);
     
-    if (storedConversation) {
-      setCurrentConversation(storedConversation);
-      setMessages(storedConversation.messages);
+    const storedCurrentConversation = getCurrentConversation();
+    
+    if (storedCurrentConversation) {
+      setCurrentConversation(storedCurrentConversation);
+      setMessages(storedCurrentConversation.messages);
     } else {
       // 创建新对话
-      const newConversation: Conversation = {
-        id: uuidv4(),
-        messages: [],
-        activePromptId: null,
-        sceneId: activeSceneId
-      };
-      
-      setCurrentConversation(newConversation);
-      saveCurrentConversation(newConversation);
+      createNewConversation();
     }
-  }, [activeSceneId]);
+  }, []);
 
   // 当场景或提示变化时，更新当前对话
   useEffect(() => {
@@ -66,13 +71,109 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       const updatedConversation: Conversation = {
         ...currentConversation,
         activePromptId: getActivePrompt()?.id || null,
-        sceneId: activeSceneId
+        sceneId: activeSceneId,
+        updatedAt: Date.now()
       };
       
-      setCurrentConversation(updatedConversation);
-      saveCurrentConversation(updatedConversation);
+      updateConversation(updatedConversation);
     }
   }, [activeSceneId, getActivePrompt]);
+
+  // 更新对话
+  const updateConversation = (conversation: Conversation) => {
+    setCurrentConversation(conversation);
+    setMessages(conversation.messages);
+    
+    // 更新对话列表
+    const updatedConversations = conversations.map(conv => 
+      conv.id === conversation.id ? conversation : conv
+    );
+    setConversations(updatedConversations);
+    
+    // 保存到本地存储
+    saveCurrentConversation(conversation);
+    saveConversations(updatedConversations);
+  };
+
+  // 创建新对话
+  const createNewConversation = () => {
+    const timestamp = Date.now();
+    const newConversation: Conversation = {
+      id: uuidv4(),
+      name: `对话 ${new Date(timestamp).toLocaleString()}`,
+      messages: [],
+      activePromptId: getActivePrompt()?.id || null,
+      sceneId: activeSceneId,
+      createdAt: timestamp,
+      updatedAt: timestamp
+    };
+    
+    setCurrentConversation(newConversation);
+    setMessages([]);
+    
+    // 更新对话列表
+    const updatedConversations = [...conversations, newConversation];
+    setConversations(updatedConversations);
+    
+    // 保存到本地存储
+    saveCurrentConversation(newConversation);
+    saveConversations(updatedConversations);
+  };
+
+  // 切换对话
+  const switchConversation = (conversationId: string) => {
+    const conversation = conversations.find(conv => conv.id === conversationId);
+    if (conversation) {
+      setCurrentConversation(conversation);
+      setMessages(conversation.messages);
+      saveCurrentConversation(conversation);
+    }
+  };
+
+  // 重命名对话
+  const renameConversation = (conversationId: string, newName: string) => {
+    const updatedConversations = conversations.map(conv => 
+      conv.id === conversationId 
+        ? { ...conv, name: newName, updatedAt: Date.now() } 
+        : conv
+    );
+    
+    setConversations(updatedConversations);
+    
+    if (currentConversation?.id === conversationId) {
+      const updatedCurrentConversation = { 
+        ...currentConversation, 
+        name: newName,
+        updatedAt: Date.now()
+      };
+      setCurrentConversation(updatedCurrentConversation);
+    }
+    
+    saveConversations(updatedConversations);
+  };
+
+  // 删除对话
+  const handleDeleteConversation = (conversationId: string) => {
+    // 从列表中删除
+    const updatedConversations = conversations.filter(conv => conv.id !== conversationId);
+    setConversations(updatedConversations);
+    
+    // 如果删除的是当前对话，切换到另一个对话或创建新对话
+    if (currentConversation?.id === conversationId) {
+      if (updatedConversations.length > 0) {
+        const newCurrentConversation = updatedConversations[0];
+        setCurrentConversation(newCurrentConversation);
+        setMessages(newCurrentConversation.messages);
+        saveCurrentConversation(newCurrentConversation);
+      } else {
+        createNewConversation();
+      }
+    }
+    
+    // 从本地存储中删除
+    deleteConversation(conversationId);
+    saveConversations(updatedConversations);
+  };
 
   const sendMessage = async (content: string) => {
     if (!content.trim() || !currentConversation) return;
@@ -90,12 +191,14 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     setMessages(updatedMessages);
     
     // 更新对话
+    const timestamp = Date.now();
     const updatedConversation: Conversation = {
       ...currentConversation,
-      messages: updatedMessages
+      messages: updatedMessages,
+      updatedAt: timestamp
     };
-    setCurrentConversation(updatedConversation);
-    saveCurrentConversation(updatedConversation);
+    
+    updateConversation(updatedConversation);
     
     // 获取当前活动提示
     const activePrompt = getActivePrompt();
@@ -124,10 +227,11 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       // 更新对话
       const conversationWithResponse: Conversation = {
         ...updatedConversation,
-        messages: messagesWithResponse
+        messages: messagesWithResponse,
+        updatedAt: Date.now()
       };
-      setCurrentConversation(conversationWithResponse);
-      saveCurrentConversation(conversationWithResponse);
+      
+      updateConversation(conversationWithResponse);
     } catch (error) {
       console.error('Error sending message to AI:', error);
       
@@ -146,10 +250,11 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       // 更新对话
       const conversationWithError: Conversation = {
         ...updatedConversation,
-        messages: messagesWithError
+        messages: messagesWithError,
+        updatedAt: Date.now()
       };
-      setCurrentConversation(conversationWithError);
-      saveCurrentConversation(conversationWithError);
+      
+      updateConversation(conversationWithError);
     } finally {
       setIsLoading(false);
     }
@@ -159,24 +264,30 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     if (!currentConversation) return;
     
     // 创建新对话
+    const timestamp = Date.now();
     const newConversation: Conversation = {
       ...currentConversation,
-      id: uuidv4(),
-      messages: []
+      messages: [],
+      updatedAt: timestamp
     };
     
     setMessages([]);
-    setCurrentConversation(newConversation);
-    saveCurrentConversation(newConversation);
+    updateConversation(newConversation);
   };
 
   return (
     <ChatContext.Provider
       value={{
+        conversations,
+        currentConversation,
         messages,
         isLoading,
         sendMessage,
-        clearMessages
+        clearMessages,
+        createNewConversation,
+        switchConversation,
+        renameConversation,
+        deleteConversation: handleDeleteConversation
       }}
     >
       {children}
