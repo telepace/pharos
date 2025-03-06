@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Layout, Typography } from 'antd';
-import { ResizeBox } from 'react-resizable-layout';
+import { Resizable, ResizeCallbackData } from 'react-resizable';
 import ChatWindow from '../Chat/ChatWindow';
 import SceneSelector from '../Prompt/SceneSelector';
 import PromptList from '../Prompt/PromptList';
@@ -13,11 +13,19 @@ const { Title } = Typography;
 const MainLayout: React.FC = () => {
   // 保存左侧边栏和中间内容区的宽度
   const [leftSiderWidth, setLeftSiderWidth] = useState(250);
-  const [contentSplitPosition, setContentSplitPosition] = useState(0.5);
-  
-  // 计算右侧区域宽度
-  const handleContentResize = (position: number) => {
-    setContentSplitPosition(position);
+  const [contentWidth, setContentWidth] = useState(window.innerWidth * 0.4); // 默认40%宽度
+  const [rightSiderWidth, setRightSiderWidth] = useState(300); // 添加右侧宽度状态
+
+  const onLeftSiderResize = (e: React.SyntheticEvent, { size }: ResizeCallbackData) => {
+    setLeftSiderWidth(size.width);
+  };
+
+  const onContentResize = (e: React.SyntheticEvent, { size }: ResizeCallbackData) => {
+    setContentWidth(size.width);
+  };
+
+  const onRightSiderResize = (e: React.SyntheticEvent, { size }: ResizeCallbackData) => {
+    setRightSiderWidth(size.width);
   };
 
   return (
@@ -27,90 +35,90 @@ const MainLayout: React.FC = () => {
       </Header>
       <Layout>
         {/* 左侧可调节边栏 */}
-        <ResizeBox
-          style={{
-            width: leftSiderWidth,
-            height: 'calc(100vh - 64px)',
-            background: '#fff',
-            borderRight: '1px solid #f0f0f0'
-          }}
-          handlePosition="right"
-          handleStyles={{
-            width: '4px',
-            background: '#f0f0f0',
-            cursor: 'col-resize',
-            '&:hover': {
-              background: '#1890ff'
-            }
-          }}
-          minWidth={200}
-          maxWidth={400}
-          onResize={(width) => setLeftSiderWidth(width)}
+        <Resizable
+          width={leftSiderWidth}
+          height={window.innerHeight - 64} // 减去header高度
+          onResize={onLeftSiderResize}
+          minConstraints={[200, window.innerHeight - 64]}
+          maxConstraints={[400, window.innerHeight - 64]}
+          handle={<div className="custom-handle custom-handle-e" />}
+          axis="x"
+          resizeHandles={['e']}
         >
-          <div style={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            height: '100%', 
-            padding: '16px' 
-          }}>
-            <ConversationList />
-          </div>
-        </ResizeBox>
+          <Sider 
+            width={leftSiderWidth}
+            style={{ 
+              background: '#fff',
+              height: 'calc(100vh - 64px)',
+              overflow: 'hidden'
+            }}
+          >
+            <div style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              height: '100%', 
+              padding: '16px' 
+            }}>
+              <ConversationList />
+            </div>
+          </Sider>
+        </Resizable>
 
         {/* 主内容区域 */}
-        <Content style={{ 
-          height: 'calc(100vh - 64px)', 
-          overflow: 'hidden',
-          display: 'flex'
-        }}>
-          {/* 聊天窗口和提示列表的可调节分隔 */}
-          <ResizeBox
-            style={{
-              flex: 1,
-              display: 'flex',
-              background: '#fff'
-            }}
-            handlePosition="right"
-            handleStyles={{
-              width: '4px',
-              background: '#f0f0f0',
-              cursor: 'col-resize',
-              '&:hover': {
-                background: '#1890ff'
-              }
-            }}
-            minWidth="30%"
-            maxWidth="70%"
-            defaultSize={contentSplitPosition}
-            onResize={handleContentResize}
+        <Layout style={{ position: 'relative' }}>
+          <Resizable
+            width={contentWidth}
+            height={window.innerHeight - 64}
+            onResize={onContentResize}
+            minConstraints={[window.innerWidth * 0.3, window.innerHeight - 64]}
+            maxConstraints={[window.innerWidth * 0.7, window.innerHeight - 64]}
+            handle={<div className="custom-handle custom-handle-e" />}
+            axis="x"
+            resizeHandles={['e']}
           >
-            {/* 聊天窗口 */}
-            <div style={{ 
-              flex: 1,
+            <Content style={{ 
               padding: '24px',
-              height: '100%',
-              overflow: 'hidden'
+              height: 'calc(100vh - 64px)',
+              overflow: 'hidden',
+              background: '#fff'
             }}>
               <ChatWindow />
-            </div>
+            </Content>
+          </Resizable>
 
-            {/* 右侧提示区域 */}
-            <div style={{ 
-              width: `${(1 - contentSplitPosition) * 100}%`,
-              background: '#fff',
-              padding: '24px',
-              height: '100%',
-              overflow: 'hidden',
-              display: 'flex',
-              flexDirection: 'column'
-            }}>
+          {/* 右侧提示区域 - 添加可调整大小功能 */}
+          <Resizable
+            width={rightSiderWidth}
+            height={window.innerHeight - 64}
+            onResize={onRightSiderResize}
+            minConstraints={[250, window.innerHeight - 64]}
+            maxConstraints={[500, window.innerHeight - 64]}
+            handle={<div className="custom-handle custom-handle-w" />}
+            axis="x"
+            resizeHandles={['w']}
+          >
+            <Sider 
+              width={rightSiderWidth}
+              style={{ 
+                background: '#fff', 
+                padding: '24px',
+                height: 'calc(100vh - 64px)',
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column'
+              }}
+            >
               <SceneSelector />
-              <div style={{ flex: 1, overflow: 'auto' }}>
+              <div style={{ 
+                flex: 1, 
+                overflow: 'auto',
+                marginTop: '16px'
+              }}>
                 <PromptList />
               </div>
-            </div>
-          </ResizeBox>
-        </Content>
+            </Sider>
+          </Resizable>
+        </Layout>
       </Layout>
     </Layout>
   );
