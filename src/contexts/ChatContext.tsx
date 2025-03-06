@@ -215,7 +215,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       // 创建AI回复消息
       const assistantMessage: Message = {
         id: uuidv4(),
-        content: aiResponse,
+        content: aiResponse.content,
         role: 'assistant',
         timestamp: Date.now()
       };

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout, Typography } from 'antd';
 import { Resizable, ResizeCallbackData } from 'react-resizable';
 import ChatWindow from '../Chat/ChatWindow';
@@ -11,10 +11,33 @@ const { Header, Content, Sider } = Layout;
 const { Title } = Typography;
 
 const MainLayout: React.FC = () => {
-  // 保存左侧边栏和中间内容区的宽度
-  const [leftSiderWidth, setLeftSiderWidth] = useState(250);
-  const [contentWidth, setContentWidth] = useState(window.innerWidth * 0.4); // 默认40%宽度
-  const [rightSiderWidth, setRightSiderWidth] = useState(300); // 添加右侧宽度状态
+  // 从 localStorage 读取保存的宽度，如果没有则使用默认值
+  const [leftSiderWidth, setLeftSiderWidth] = useState(() => {
+    const saved = localStorage.getItem('leftSiderWidth');
+    return saved ? parseInt(saved) : 250;
+  });
+  
+  const [contentWidth, setContentWidth] = useState(() => {
+    const saved = localStorage.getItem('contentWidth');
+    return saved ? parseInt(saved) : window.innerWidth * 0.4;
+  });
+  
+  const [rightSiderWidth, setRightSiderWidth] = useState(() => {
+    const saved = localStorage.getItem('rightSiderWidth');
+    return saved ? parseInt(saved) : 300;
+  });
+
+  // 保存宽度到 localStorage
+  const saveWidths = () => {
+    localStorage.setItem('leftSiderWidth', leftSiderWidth.toString());
+    localStorage.setItem('contentWidth', contentWidth.toString());
+    localStorage.setItem('rightSiderWidth', rightSiderWidth.toString());
+  };
+
+  // 当宽度变化时保存
+  useEffect(() => {
+    saveWidths();
+  }, [leftSiderWidth, contentWidth, rightSiderWidth]);
 
   const onLeftSiderResize = (e: React.SyntheticEvent, { size }: ResizeCallbackData) => {
     setLeftSiderWidth(size.width);

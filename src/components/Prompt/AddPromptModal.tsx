@@ -3,6 +3,7 @@ import { Modal, Form, Input, Select } from 'antd';
 import { Prompt, LLMModel } from '../../types';
 import { usePromptContext } from '../../contexts/PromptContext';
 import { useSceneContext } from '../../contexts/SceneContext';
+import { useModelStatus } from '../../hooks/useModelStatus';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -23,6 +24,7 @@ const AddPromptModal: React.FC<AddPromptModalProps> = ({
   const [form] = Form.useForm();
   const { addPrompt, updatePrompt } = usePromptContext();
   const { activeSceneId } = useSceneContext();
+  const { getModelStatus } = useModelStatus();
   
   useEffect(() => {
     if (visible) {
@@ -61,6 +63,23 @@ const AddPromptModal: React.FC<AddPromptModalProps> = ({
     });
   };
   
+  const renderModelOption = (model: LLMModel) => {
+    const { isAvailable, reason } = getModelStatus(model);
+    return (
+      <Option 
+        value={model} 
+        disabled={!isAvailable}
+      >
+        {model}
+        {!isAvailable && (
+          <span style={{ color: '#ff4d4f', marginLeft: 8 }}>
+            ({reason})
+          </span>
+        )}
+      </Option>
+    );
+  };
+
   return (
     <Modal
       title={editMode ? "编辑提示" : "添加提示"}
@@ -99,10 +118,39 @@ const AddPromptModal: React.FC<AddPromptModalProps> = ({
           rules={[{ required: true, message: '请选择LLM模型' }]}
         >
           <Select>
-            <Option value={LLMModel.GPT35}>GPT-3.5 Turbo</Option>
-            <Option value={LLMModel.GPT4}>GPT-4</Option>
-            <Option value={LLMModel.CLAUDE3_OPUS}>Claude 3 Opus</Option>
-            <Option value={LLMModel.CLAUDE3_SONNET}>Claude 3 Sonnet</Option>
+            {/* OpenAI 模型 */}
+            <Select.OptGroup label="OpenAI">
+              {renderModelOption(LLMModel.GPT35)}
+              {renderModelOption(LLMModel.GPT4)}
+              {renderModelOption(LLMModel.GPT4_TURBO)}
+              {renderModelOption(LLMModel.GPT4O)}
+              {renderModelOption(LLMModel.GPT4O_MINI)}
+              {renderModelOption(LLMModel.GPT4O_MINI_CA)}
+              {renderModelOption(LLMModel.O3_MINI)}
+            </Select.OptGroup>
+
+            {/* Claude 模型 */}
+            <Select.OptGroup label="Claude">
+              {renderModelOption(LLMModel.CLAUDE3_OPUS)}
+              {renderModelOption(LLMModel.CLAUDE3_SONNET)}
+              {renderModelOption(LLMModel.CLAUDE3_HAIKU)}
+              {renderModelOption(LLMModel.CLAUDE_3_7_SONNET)}
+              {renderModelOption(LLMModel.CLAUDE_3_5_HAIKU)}
+            </Select.OptGroup>
+
+            {/* Gemini 模型 */}
+            <Select.OptGroup label="Gemini">
+              {renderModelOption(LLMModel.GEMINI_PRO)}
+              {renderModelOption(LLMModel.GEMINI_PRO_VISION)}
+              {renderModelOption(LLMModel.GEMINI_2_FLASH)}
+              {renderModelOption(LLMModel.GEMINI_1_5_FLASH)}
+            </Select.OptGroup>
+
+            {/* 其他模型 */}
+            <Select.OptGroup label="其他">
+              {renderModelOption(LLMModel.GROK_3)}
+              {renderModelOption(LLMModel.DEEPSEEK_REASONER)}
+            </Select.OptGroup>
           </Select>
         </Form.Item>
       </Form>
