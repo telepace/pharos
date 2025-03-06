@@ -4,7 +4,7 @@ import { Message, LLMModel } from '../types';
 export const sendMessageToAI = async (
   messages: Message[],
   promptContent: string | null,
-  model: LLMModel = 'gpt-3.5-turbo'
+  model: LLMModel = LLMModel.GPT35
 ): Promise<string> => {
   // 在实际项目中，这里应该是API调用
   // 例如：

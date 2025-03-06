@@ -46,7 +46,7 @@ const PromptList: React.FC = () => {
           description={
             !activeSceneId 
               ? "请先选择一个场景" 
-              : "当前场景下没有提示，点击"添加提示"按钮创建"
+              : "当前场景下没有提示，点击\"添加提示\"按钮创建"
           } 
         />
       ) : (

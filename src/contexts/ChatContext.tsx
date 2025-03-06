@@ -8,6 +8,7 @@ import {
   getCurrentConversation, 
   saveCurrentConversation 
 } from '../services/localStorage';
+import { LLMModel } from '../types';
 
 interface ChatContextType {
   messages: Message[];
@@ -105,7 +106,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       const aiResponse = await sendMessageToAI(
         updatedMessages,
         activePrompt?.content || null,
-        activePrompt?.model || 'gpt-3.5-turbo'
+        activePrompt?.model as LLMModel
       );
       
       // 创建AI回复消息

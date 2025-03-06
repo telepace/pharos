@@ -95,14 +95,14 @@ const AddPromptModal: React.FC<AddPromptModalProps> = ({
         <Form.Item
           name="model"
           label="LLM模型"
-          initialValue="gpt-3.5-turbo"
+          initialValue={LLMModel.GPT35}
           rules={[{ required: true, message: '请选择LLM模型' }]}
         >
           <Select>
-            <Option value="gpt-3.5-turbo">GPT-3.5 Turbo</Option>
-            <Option value="gpt-4">GPT-4</Option>
-            <Option value="claude-3-opus">Claude 3 Opus</Option>
-            <Option value="claude-3-sonnet">Claude 3 Sonnet</Option>
+            <Option value={LLMModel.GPT35}>GPT-3.5 Turbo</Option>
+            <Option value={LLMModel.GPT4}>GPT-4</Option>
+            <Option value={LLMModel.CLAUDE3_OPUS}>Claude 3 Opus</Option>
+            <Option value={LLMModel.CLAUDE3_SONNET}>Claude 3 Sonnet</Option>
           </Select>
         </Form.Item>
       </Form>

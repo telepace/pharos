@@ -25,4 +25,9 @@ export interface Conversation {
   sceneId: string | null;
 }
 
-export type LLMModel = 'gpt-3.5-turbo' | 'gpt-4' | 'claude-3-opus' | 'claude-3-sonnet'; 
+export enum LLMModel {
+  GPT35 = 'gpt-3.5-turbo',
+  GPT4 = 'gpt-4',
+  CLAUDE3_OPUS = 'claude-3-opus',
+  CLAUDE3_SONNET = 'claude-3-sonnet'
+} 
