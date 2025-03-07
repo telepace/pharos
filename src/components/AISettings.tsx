@@ -32,6 +32,11 @@ const AISettings: React.FC<AISettingsProps> = ({ onSave }) => {
     apiKey: process.env.REACT_APP_GEMINI_API_KEY || '',
     baseUrl: process.env.REACT_APP_GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta'
   });
+  
+  const [deepseekSettings, setDeepseekSettings] = useState({
+    apiKey: process.env.REACT_APP_DEEPSEEK_API_KEY || '',
+    baseUrl: process.env.REACT_APP_DEEPSEEK_BASE_URL || 'https://api.deepseek.com'
+  });
 
   const handleSave = async () => {
     setLoading(true);
@@ -47,6 +52,9 @@ const AISettings: React.FC<AISettingsProps> = ({ onSave }) => {
           break;
         case AIProvider.GEMINI:
           settings = { provider: AIProvider.GEMINI, ...geminiSettings };
+          break;
+        case AIProvider.DEEPSEEK:
+          settings = { provider: AIProvider.DEEPSEEK, ...deepseekSettings };
           break;
         default:
           throw new Error(`不支持的AI提供商: ${activeProvider}`);
@@ -168,6 +176,31 @@ const AISettings: React.FC<AISettingsProps> = ({ onSave }) => {
                 <Option value={LLMModel.GEMINI_PRO_VISION}>Gemini Pro Vision</Option>
                 <Option value={LLMModel.GEMINI_2_FLASH}>Gemini 2.0 Flash</Option>
                 <Option value={LLMModel.GEMINI_1_5_FLASH}>Gemini 1.5 Flash</Option>
+              </Select>
+            </Form.Item>
+          </Form>
+        </TabPane>
+        
+        <TabPane tab="DeepSeek" key={AIProvider.DEEPSEEK}>
+          <Form layout="vertical">
+            <Form.Item label="API密钥">
+              <Input.Password
+                value={deepseekSettings.apiKey}
+                onChange={(e) => setDeepseekSettings({ ...deepseekSettings, apiKey: e.target.value })}
+                placeholder="输入DeepSeek API密钥"
+              />
+            </Form.Item>
+            <Form.Item label="基础URL">
+              <Input
+                value={deepseekSettings.baseUrl}
+                onChange={(e) => setDeepseekSettings({ ...deepseekSettings, baseUrl: e.target.value })}
+                placeholder="https://api.deepseek.com"
+              />
+            </Form.Item>
+            <Form.Item label="可用模型">
+              <Select disabled style={{ width: '100%' }} mode="multiple" defaultValue={[LLMModel.DEEPSEEK_REASONER, LLMModel.DEEPSEEK_CHAT]}>
+                <Option value={LLMModel.DEEPSEEK_REASONER}>DeepSeek Reasoner</Option>
+                <Option value={LLMModel.DEEPSEEK_CHAT}>DeepSeek Chat</Option>
               </Select>
             </Form.Item>
           </Form>

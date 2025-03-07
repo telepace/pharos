@@ -41,6 +41,7 @@ export enum LLMModel {
   GROK_3 = 'grok-3',
   CLAUDE_3_7_SONNET = 'claude-3-7-sonnet-20250219',
   DEEPSEEK_REASONER = 'deepseek-reasoner',
+  DEEPSEEK_CHAT = 'deepseek-chat',
   CLAUDE_3_5_HAIKU = 'claude-3-5-haiku-20241022',
   GEMINI_1_5_FLASH = 'gemini-1.5-flash-latest',
   GPT4O_MINI_CA = 'gpt-4o-mini-ca',
@@ -52,7 +53,8 @@ export enum LLMModel {
 export enum AIProvider {
   OPENAI = 'openai',
   CLAUDE = 'claude',
-  GEMINI = 'gemini'
+  GEMINI = 'gemini',
+  DEEPSEEK = 'deepseek'
 }
 
 export interface AIConfig {

@@ -21,6 +21,12 @@ const getAIConfig = (provider: AIProvider): AIConfig => {
         apiKey: process.env.REACT_APP_GEMINI_API_KEY || '',
         baseUrl: process.env.REACT_APP_GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta'
       };
+    case AIProvider.DEEPSEEK:
+      return {
+        provider: AIProvider.DEEPSEEK,
+        apiKey: process.env.REACT_APP_DEEPSEEK_API_KEY || '',
+        baseUrl: process.env.REACT_APP_DEEPSEEK_BASE_URL || 'https://api.deepseek.com'
+      };
     default:
       throw new Error(`不支持的AI提供商: ${provider}`);
   }
@@ -34,6 +40,8 @@ const getProviderFromModel = (model: LLMModel): AIProvider => {
     return AIProvider.CLAUDE;
   } else if (model.startsWith('gemini')) {
     return AIProvider.GEMINI;
+  } else if (model.startsWith('deepseek')) {
+    return AIProvider.DEEPSEEK;
   }
   throw new Error(`无法确定模型 ${model} 的提供商`);
 };
@@ -193,6 +201,54 @@ const callGemini = async (
   };
 };
 
+// DeepSeek API调用
+const callDeepSeek = async (
+  messages: Message[],
+  promptContent: string | null,
+  model: LLMModel,
+  config: AIConfig
+): Promise<AIResponse> => {
+  const formattedMessages = [
+    ...(promptContent ? [{ role: 'system', content: promptContent }] : []),
+    ...messages.map(msg => ({ role: msg.role, content: msg.content }))
+  ];
+
+  try {
+    const response = await fetch(`${config.baseUrl}/v1/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${config.apiKey}`
+      },
+      body: JSON.stringify({
+        model,
+        messages: formattedMessages
+      })
+    });
+
+    if (!response.ok) {
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('text/html')) {
+        const text = await response.text();
+        throw new Error(`服务器返回了HTML而不是JSON: ${text.substring(0, 100)}...`);
+      }
+      const errorData = await response.json();
+      throw new Error(`DeepSeek API错误: ${errorData.error?.message || response.statusText}`);
+    }
+
+    const data = await response.json();
+    return {
+      content: data.choices[0].message.content,
+      model,
+      provider: AIProvider.DEEPSEEK,
+      usage: data.usage
+    };
+  } catch (error) {
+    console.error('API调用详细错误:', error);
+    throw error;
+  }
+};
+
 // 主要的API调用函数
 export const sendMessageToAI = async (
   messages: Message[],
@@ -216,6 +272,8 @@ export const sendMessageToAI = async (
         return await callClaude(messages, promptContent, model, config);
       case AIProvider.GEMINI:
         return await callGemini(messages, promptContent, model, config);
+      case AIProvider.DEEPSEEK:
+        return await callDeepSeek(messages, promptContent, model, config);
       default:
         throw new Error(`不支持的AI提供商: ${provider}`);
     }
@@ -252,6 +310,14 @@ export const getAvailableModels = (): { model: LLMModel; provider: AIProvider }[
     models.push(
       { model: LLMModel.GEMINI_PRO, provider: AIProvider.GEMINI },
       { model: LLMModel.GEMINI_PRO_VISION, provider: AIProvider.GEMINI }
+    );
+  }
+  
+  // 检查DeepSeek配置
+  if (process.env.REACT_APP_DEEPSEEK_API_KEY) {
+    models.push(
+      { model: LLMModel.DEEPSEEK_REASONER, provider: AIProvider.DEEPSEEK },
+      { model: LLMModel.DEEPSEEK_CHAT, provider: AIProvider.DEEPSEEK }
     );
   }
   
@@ -292,6 +358,14 @@ export const testAIConnection = async (provider: AIProvider): Promise<boolean> =
         );
         return response.ok;
       }
+      case AIProvider.DEEPSEEK: {
+        const response = await fetch(`${config.baseUrl}/v1/models`, {
+          headers: {
+            'Authorization': `Bearer ${config.apiKey}`
+          }
+        });
+        return response.ok;
+      }
       default:
         return false;
     }
@@ -322,6 +396,12 @@ const printAIConfigurations = () => {
   console.log('\nGemini配置:');
   console.log('基础URL:', geminiConfig.baseUrl);
   console.log('API密钥:', geminiConfig.apiKey ? '已配置' : '未配置');
+  
+  // DeepSeek配置
+  const deepseekConfig = getAIConfig(AIProvider.DEEPSEEK);
+  console.log('\nDeepSeek配置:');
+  console.log('基础URL:', deepseekConfig.baseUrl);
+  console.log('API密钥:', deepseekConfig.apiKey ? '已配置' : '未配置');
   
   console.log('\n=== 配置信息结束 ===\n');
 };

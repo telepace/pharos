@@ -146,10 +146,15 @@ const AddPromptModal: React.FC<AddPromptModalProps> = ({
               {renderModelOption(LLMModel.GEMINI_1_5_FLASH)}
             </Select.OptGroup>
 
+            {/* DeepSeek 模型 */}
+            <Select.OptGroup label="DeepSeek">
+              {renderModelOption(LLMModel.DEEPSEEK_REASONER)}
+              {renderModelOption(LLMModel.DEEPSEEK_CHAT)}
+            </Select.OptGroup>
+
             {/* 其他模型 */}
             <Select.OptGroup label="其他">
               {renderModelOption(LLMModel.GROK_3)}
-              {renderModelOption(LLMModel.DEEPSEEK_REASONER)}
             </Select.OptGroup>
           </Select>
         </Form.Item>
