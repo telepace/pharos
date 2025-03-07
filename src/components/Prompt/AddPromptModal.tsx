@@ -160,6 +160,14 @@ const AddPromptModal: React.FC<AddPromptModalProps> = ({
               {renderModelOption(LLMModel.HUOSHAN_DEEPSEEK_V3)}
             </Select.OptGroup>
 
+            {/* 通义千问模型 */}
+            <Select.OptGroup label="通义千问">
+              {renderModelOption(LLMModel.QWEN_PLUS)}
+              {renderModelOption(LLMModel.QWEN_PLUS_LATEST)}
+              {renderModelOption(LLMModel.QWEN_MAX)}
+              {renderModelOption(LLMModel.QWQ_PLUS)}
+            </Select.OptGroup>
+
             {/* 其他模型 */}
             <Select.OptGroup label="其他">
               {renderModelOption(LLMModel.GROK_3)}

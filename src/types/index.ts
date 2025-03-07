@@ -51,7 +51,11 @@ export enum LLMModel {
   HUOSHAN_DEEPSEEK_R1 = 'deepseek-r1-250120',
   HUOSHAN_DEEPSEEK_R1_QWEN_32B = 'deepseek-r1-distill-qwen-32b-250120',
   HUOSHAN_DEEPSEEK_R1_QWEN_7B = 'deepseek-r1-distill-qwen-7b-250120',
-  HUOSHAN_DEEPSEEK_V3 = 'deepseek-v3-241226'
+  HUOSHAN_DEEPSEEK_V3 = 'deepseek-v3-241226',
+  QWEN_PLUS = 'qwen-plus',
+  QWEN_PLUS_LATEST = 'qwen-plus-latest',
+  QWEN_MAX = 'qwen-max',
+  QWQ_PLUS = 'qwq-plus'
 }
 
 export enum AIProvider {
@@ -59,7 +63,8 @@ export enum AIProvider {
   CLAUDE = 'claude',
   GEMINI = 'gemini',
   DEEPSEEK = 'deepseek',
-  HUOSHAN = 'huoshan'
+  HUOSHAN = 'huoshan',
+  QWEN = 'qwen'
 }
 
 export interface AIConfig {

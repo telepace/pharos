@@ -32,6 +32,10 @@ export const getAIEnvVariables = () => {
     huoshan: {
       apiKey: getEnvVariable('HUOSHAN_API_KEY'),
       baseUrl: getEnvVariable('HUOSHAN_BASE_URL', 'https://ark.cn-beijing.volces.com/api/v3')
+    },
+    qwen: {
+      apiKey: getEnvVariable('QWEN_API_KEY'),
+      baseUrl: getEnvVariable('QWEN_BASE_URL', 'https://dashscope.aliyuncs.com/compatible-mode/v1')
     }
   };
 };
@@ -42,5 +46,6 @@ export const hasAnyAIConfigured = (): boolean => {
          hasEnvVariable('CLAUDE_API_KEY') || 
          hasEnvVariable('GEMINI_API_KEY') ||
          hasEnvVariable('DEEPSEEK_API_KEY') ||
-         hasEnvVariable('HUOSHAN_API_KEY');
+         hasEnvVariable('HUOSHAN_API_KEY') ||
+         hasEnvVariable('QWEN_API_KEY');
 }; 

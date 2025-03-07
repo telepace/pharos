@@ -33,6 +33,12 @@ const getAIConfig = (provider: AIProvider): AIConfig => {
         apiKey: process.env.REACT_APP_HUOSHAN_API_KEY || '',
         baseUrl: process.env.REACT_APP_HUOSHAN_BASE_URL || 'https://ark.cn-beijing.volces.com/api/v3'
       };
+    case AIProvider.QWEN:
+      return {
+        provider: AIProvider.QWEN,
+        apiKey: process.env.REACT_APP_QWEN_API_KEY || '',
+        baseUrl: process.env.REACT_APP_QWEN_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1'
+      };
     default:
       throw new Error(`不支持的AI提供商: ${provider}`);
   }
@@ -53,6 +59,8 @@ const getProviderFromModel = (model: LLMModel): AIProvider => {
     return AIProvider.HUOSHAN;
   } else if (model.startsWith('deepseek')) {
     return AIProvider.DEEPSEEK;
+  } else if (model.startsWith('qwen')) {
+    return AIProvider.QWEN;
   }
   throw new Error(`无法确定模型 ${model} 的提供商`);
 };
@@ -313,6 +321,49 @@ const callHuoshan = async (
   }
 };
 
+// 通义千问API调用
+const callQwen = async (
+  messages: Message[],
+  promptContent: string | null,
+  model: LLMModel,
+  config: AIConfig
+): Promise<AIResponse> => {
+  const formattedMessages = [
+    ...(promptContent ? [{ role: 'system', content: promptContent }] : []),
+    ...messages.map(msg => ({ role: msg.role, content: msg.content }))
+  ];
+
+  try {
+    const response = await fetch(`${config.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${config.apiKey}`
+      },
+      body: JSON.stringify({
+        model,
+        messages: formattedMessages
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`通义千问API错误: ${errorData.error?.message || response.statusText}`);
+    }
+
+    const data = await response.json();
+    return {
+      content: data.choices[0].message.content,
+      model,
+      provider: AIProvider.QWEN,
+      usage: data.usage
+    };
+  } catch (error) {
+    console.error('通义千问API调用错误:', error);
+    throw error;
+  }
+};
+
 // 主要的API调用函数
 export const sendMessageToAI = async (
   messages: Message[],
@@ -340,6 +391,8 @@ export const sendMessageToAI = async (
         return await callDeepSeek(messages, promptContent, model, config);
       case AIProvider.HUOSHAN:
         return await callHuoshan(messages, promptContent, model, config);
+      case AIProvider.QWEN:
+        return await callQwen(messages, promptContent, model, config);
       default:
         throw new Error(`不支持的AI提供商: ${provider}`);
     }
@@ -397,6 +450,16 @@ export const getAvailableModels = (): { model: LLMModel; provider: AIProvider }[
     );
   }
   
+  // 检查通义千问配置
+  if (process.env.REACT_APP_QWEN_API_KEY) {
+    models.push(
+      { model: LLMModel.QWEN_PLUS, provider: AIProvider.QWEN },
+      { model: LLMModel.QWEN_PLUS_LATEST, provider: AIProvider.QWEN },
+      { model: LLMModel.QWEN_MAX, provider: AIProvider.QWEN },
+      { model: LLMModel.QWQ_PLUS, provider: AIProvider.QWEN }
+    );
+  }
+  
   return models;
 };
 
@@ -450,6 +513,20 @@ export const testAIConnection = async (provider: AIProvider): Promise<boolean> =
         });
         return response.ok;
       }
+      case AIProvider.QWEN: {
+        const response = await fetch(`${config.baseUrl}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${config.apiKey}`
+          },
+          body: JSON.stringify({
+            model: 'qwen-plus',
+            messages: [{ role: 'user', content: 'test' }]
+          })
+        });
+        return response.ok;
+      }
       default:
         return false;
     }
@@ -492,6 +569,12 @@ const printAIConfigurations = () => {
   console.log('\n火山配置:');
   console.log('基础URL:', huoshanConfig.baseUrl);
   console.log('API密钥:', huoshanConfig.apiKey ? '已配置' : '未配置');
+
+  // 通义千问配置
+  const tongyiConfig = getAIConfig(AIProvider.QWEN);
+  console.log('\n通义千问配置:');
+  console.log('基础URL:', tongyiConfig.baseUrl);
+  console.log('API密钥:', tongyiConfig.apiKey ? '已配置' : '未配置');
   
   console.log('\n=== 配置信息结束 ===\n');
 };
@@ -504,8 +587,8 @@ export const sendMessage = async (
   message: AIRequestMessage,
   model: string
 ): Promise<AIResponse> => {
-  const apiKey = process.env.REACT_APP_OPENAI_API_KEY;
-  const baseUrl = process.env.REACT_APP_OPENAI_BASE_URL;
+  // 获取正确的配置
+  const config = getAIConfig(provider);
   
   const requestBody = {
     messages: [
@@ -521,11 +604,11 @@ export const sendMessage = async (
     model: model
   };
 
-  const response = await fetch(`${baseUrl}/chat/completions`, {
+  const response = await fetch(`${config.baseUrl}/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
+      'Authorization': `Bearer ${config.apiKey}`
     },
     body: JSON.stringify(requestBody)
   });
