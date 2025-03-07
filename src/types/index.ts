@@ -9,6 +9,7 @@ export interface Prompt {
   name: string;
   content: string;
   model: string;
+  type: PromptType;
 }
 
 export interface Message {
@@ -87,4 +88,9 @@ export interface AIResponse {
 export interface AIRequestMessage {
   userPrompt: string;
   systemPrompt?: string;
+}
+
+export enum PromptType {
+  DIRECT = 'direct',
+  SYSTEM = 'system'
 } 

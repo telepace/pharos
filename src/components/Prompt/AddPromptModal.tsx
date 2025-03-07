@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
-import { Modal, Form, Input, Select } from 'antd';
-import { Prompt, LLMModel } from '../../types';
+import { Modal, Form, Input, Select, Radio } from 'antd';
+import { Prompt, LLMModel, PromptType } from '../../types';
 import { usePromptContext } from '../../contexts/PromptContext';
 import { useSceneContext } from '../../contexts/SceneContext';
 import { useModelStatus } from '../../hooks/useModelStatus';
@@ -10,7 +10,7 @@ const { Option } = Select;
 
 interface AddPromptModalProps {
   visible: boolean;
-  onCancel: () => void;
+  onCancel: (added?: boolean) => void;
   editMode?: boolean;
   initialValues?: Prompt;
 }
@@ -32,10 +32,14 @@ const AddPromptModal: React.FC<AddPromptModalProps> = ({
         form.setFieldsValue({
           name: initialValues.name,
           content: initialValues.content,
-          model: initialValues.model
+          model: initialValues.model,
+          type: initialValues.type || PromptType.SYSTEM
         });
       } else {
         form.resetFields();
+        form.setFieldsValue({
+          type: PromptType.SYSTEM
+        });
       }
     }
   }, [visible, editMode, initialValues, form]);
@@ -47,19 +51,27 @@ const AddPromptModal: React.FC<AddPromptModalProps> = ({
           initialValues.id,
           values.name,
           values.content,
-          values.model
+          values.model,
+          values.type
         );
+        onCancel(false);
       } else if (activeSceneId) {
-        addPrompt(
+        const newPrompt = addPrompt(
           values.name,
           values.content,
           values.model,
-          activeSceneId
+          activeSceneId,
+          values.type
         );
+        
+        console.log('成功添加新提示:', newPrompt);
+        
+        onCancel(true);
       }
       
       form.resetFields();
-      onCancel();
+    }).catch(info => {
+      console.log('验证失败:', info);
     });
   };
   
@@ -85,7 +97,7 @@ const AddPromptModal: React.FC<AddPromptModalProps> = ({
       title={editMode ? "编辑提示" : "添加提示"}
       open={visible}
       onOk={handleOk}
-      onCancel={onCancel}
+      onCancel={() => onCancel(false)}
       width={600}
     >
       <Form
@@ -98,6 +110,22 @@ const AddPromptModal: React.FC<AddPromptModalProps> = ({
           rules={[{ required: true, message: '请输入提示名称' }]}
         >
           <Input placeholder="例如：专业写作助手、代码优化器" />
+        </Form.Item>
+        
+        <Form.Item
+          name="type"
+          label="提示类型"
+          rules={[{ required: true, message: '请选择提示类型' }]}
+          initialValue={PromptType.SYSTEM}
+        >
+          <Radio.Group>
+            <Radio value={PromptType.SYSTEM}>
+              系统提示（需要用户输入）
+            </Radio>
+            <Radio value={PromptType.DIRECT}>
+              直接发送（无需用户输入）
+            </Radio>
+          </Radio.Group>
         </Form.Item>
         
         <Form.Item

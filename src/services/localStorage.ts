@@ -34,8 +34,11 @@ export const deleteScene = (sceneId: string): void => {
 
 // 提示存储
 export const getPrompts = (): Prompt[] => {
-  const prompts = localStorage.getItem('prompts');
-  return prompts ? JSON.parse(prompts) : [];
+  const promptsStr = localStorage.getItem('prompts');
+  console.log('从localStorage获取所有提示, 原始数据:', promptsStr);
+  const prompts = promptsStr ? JSON.parse(promptsStr) : [];
+  console.log('从localStorage获取所有提示, 解析后:', prompts);
+  return prompts;
 };
 
 export const savePrompts = (prompts: Prompt[]): void => {
@@ -61,8 +64,11 @@ export const deletePrompt = (promptId: string): void => {
 };
 
 export const getPromptsBySceneId = (sceneId: string): Prompt[] => {
+  console.log('按场景ID获取提示, 场景ID:', sceneId);
   const prompts = getPrompts();
-  return prompts.filter(prompt => prompt.sceneId === sceneId);
+  const filtered = prompts.filter(prompt => prompt.sceneId === sceneId);
+  console.log('按场景ID获取提示, 过滤后:', filtered);
+  return filtered;
 };
 
 // 对话存储
