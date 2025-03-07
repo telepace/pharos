@@ -2,8 +2,9 @@ import React from 'react';
 import { Avatar, Typography, Space } from 'antd';
 import { UserOutlined, RobotOutlined } from '@ant-design/icons';
 import { Message as MessageType } from '../../types';
+import ReactMarkdown from 'react-markdown';
 
-const { Text, Paragraph } = Typography;
+const { Text } = Typography;
 
 interface MessageProps {
   message: MessageType;
@@ -37,9 +38,9 @@ const Message: React.FC<MessageProps> = ({ message }) => {
           position: 'relative'
         }}
       >
-        <Paragraph style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
-          {message.content}
-        </Paragraph>
+        <div style={{ margin: 0 }}>
+          <ReactMarkdown>{message.content}</ReactMarkdown>
+        </div>
         <Text type="secondary" style={{ fontSize: 12 }}>
           {new Date(message.timestamp).toLocaleTimeString()}
         </Text>
