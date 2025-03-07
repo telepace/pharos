@@ -382,10 +382,11 @@ export const sendMessageToAI = async (
     
     // 如果是直接发送类型的提示，不需要用户输入
     if (promptContent && promptType === PromptType.DIRECT) {
-      // TODO: 修复linter错误，为Message添加id和timestamp属性
       messages = [{
+        id: Date.now().toString(),
         role: 'user',
         content: promptContent,
+        timestamp: Date.now()
       }];
     }
     

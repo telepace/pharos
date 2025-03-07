@@ -11,7 +11,7 @@ import {
   saveConversations,
   deleteConversation
 } from '../services/localStorage';
-import { LLMModel } from '../types';
+import { LLMModel, PromptType } from '../types';
 
 interface ChatContextType {
   conversations: Conversation[];
@@ -209,6 +209,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       const aiResponse = await sendMessageToAI(
         updatedMessages,
         activePrompt?.content || null,
+        activePrompt?.type || PromptType.SYSTEM,
         activePrompt?.model as LLMModel
       );
       
