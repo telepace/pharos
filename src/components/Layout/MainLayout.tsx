@@ -124,7 +124,7 @@ const MainLayout: React.FC = () => {
               width={rightSiderWidth}
               style={{ 
                 background: '#fff', 
-                padding: '24px',
+                padding: '24px 24px 0 24px',
                 height: 'calc(100vh - 64px)',
                 overflow: 'hidden',
                 display: 'flex',
@@ -135,7 +135,10 @@ const MainLayout: React.FC = () => {
               <div style={{ 
                 flex: 1, 
                 overflow: 'auto',
-                marginTop: '16px'
+                marginTop: '16px',
+                display: 'flex',
+                flexDirection: 'column',
+                height: 'calc(100% - 70px)'
               }}>
                 <PromptList />
               </div>

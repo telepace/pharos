@@ -89,6 +89,7 @@ code {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
 }
 
 .prompt-list-header {
@@ -107,6 +108,7 @@ code {
   overflow-y: auto;
   padding: 16px;
   position: relative;
+  height: calc(100% - 70px);
 }
 
 .prompt-list-content .ant-empty {

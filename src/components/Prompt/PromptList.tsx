@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Button, Empty, Typography, Divider } from 'antd';
+import { Button, Empty, Typography } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { usePromptContext } from '../../contexts/PromptContext';
 import { useSceneContext } from '../../contexts/SceneContext';
@@ -53,7 +53,7 @@ const PromptList: React.FC = () => {
   };
   
   return (
-    <div className="prompt-list-container">
+    <div className="prompt-list-container" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div className="prompt-list-header">
         <Title level={4} style={{ margin: 0 }}>
           {activeScene ? `${activeScene.name}的提示列表` : '提示列表'}
@@ -68,7 +68,16 @@ const PromptList: React.FC = () => {
         </Button>
       </div>
       
-      <div className="prompt-list-content" ref={contentRef}>
+      <div 
+        className="prompt-list-content" 
+        ref={contentRef}
+        style={{ 
+          flex: 1, 
+          overflowY: 'auto', 
+          padding: '16px',
+          height: 'calc(100% - 70px)'
+        }}
+      >
         {localPrompts.length === 0 ? (
           <Empty 
             description={
