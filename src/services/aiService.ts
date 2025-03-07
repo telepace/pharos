@@ -1,4 +1,4 @@
-import { Message, LLMModel, AIProvider, AIConfig, AIResponse, AIRequestMessage } from '../types';
+import { Message, LLMModel, AIProvider, AIConfig, AIResponse, AIRequestMessage, PromptType } from '../types';
 
 // 从环境变量中获取配置
 const getAIConfig = (provider: AIProvider): AIConfig => {
@@ -368,6 +368,7 @@ const callQwen = async (
 export const sendMessageToAI = async (
   messages: Message[],
   promptContent: string | null,
+  promptType: PromptType,
   model: LLMModel = LLMModel.GPT35
 ): Promise<AIResponse> => {
   try {
@@ -377,6 +378,15 @@ export const sendMessageToAI = async (
     // 检查API密钥是否配置
     if (!config.apiKey) {
       throw new Error(`未配置${provider}的API密钥，请在.env文件中设置`);
+    }
+    
+    // 如果是直接发送类型的提示，不需要用户输入
+    if (promptContent && promptType === PromptType.DIRECT) {
+      // TODO: 修复linter错误，为Message添加id和timestamp属性
+      messages = [{
+        role: 'user',
+        content: promptContent,
+      }];
     }
     
     // 根据提供商调用相应的API
