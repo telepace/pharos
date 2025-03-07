@@ -24,6 +24,14 @@ export const getAIEnvVariables = () => {
     gemini: {
       apiKey: getEnvVariable('GEMINI_API_KEY'),
       baseUrl: getEnvVariable('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta')
+    },
+    deepseek: {
+      apiKey: getEnvVariable('DEEPSEEK_API_KEY'),
+      baseUrl: getEnvVariable('DEEPSEEK_BASE_URL', 'https://api.deepseek.com')
+    },
+    huoshan: {
+      apiKey: getEnvVariable('HUOSHAN_API_KEY'),
+      baseUrl: getEnvVariable('HUOSHAN_BASE_URL', 'https://ark.cn-beijing.volces.com/api/v3')
     }
   };
 };
@@ -32,5 +40,7 @@ export const getAIEnvVariables = () => {
 export const hasAnyAIConfigured = (): boolean => {
   return hasEnvVariable('OPENAI_API_KEY') || 
          hasEnvVariable('CLAUDE_API_KEY') || 
-         hasEnvVariable('GEMINI_API_KEY');
+         hasEnvVariable('GEMINI_API_KEY') ||
+         hasEnvVariable('DEEPSEEK_API_KEY') ||
+         hasEnvVariable('HUOSHAN_API_KEY');
 }; 

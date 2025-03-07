@@ -11,6 +11,10 @@ OUTPUT_DIR := $(ROOT_DIR)/_output
 DOCKER_PORT ?= 3000
 DOCKER_NETWORK ?= bridge
 
+# 定义代理服务器相关变量
+PROXY_PORT ?= 3001
+PROXY_SERVER := proxy-server.js
+
 .DEFAULT_GOAL := help
 
 # 确保输出目录存在
@@ -26,9 +30,15 @@ install:
 	@echo "===========> Installing dependencies"
 	@npm install
 
+## 启动代理服务器
+.PHONY: start-proxy
+start-proxy:
+	@echo "===========> Starting proxy server"
+	@node $(PROXY_SERVER) &
+
 ## 开发模式启动
 .PHONY: dev
-dev:
+dev: start-proxy
 	@echo "===========> Starting development server"
 	@npm run dev
 
@@ -40,13 +50,13 @@ build:
 
 ## 生产模式启动
 .PHONY: start
-start:
+start: start-proxy
 	@echo "===========> Starting production server"
 	@npm run start
 
 ## 后台启动（使用 pm2）
 .PHONY: start-daemon
-start-daemon:
+start-daemon: start-proxy
 	@echo "===========> Starting server in daemon mode"
 	@npx pm2 start npm --name "$(PROJECT_NAME)" -- start
 
@@ -119,9 +129,9 @@ help:
 	@echo
 	@echo "\033[1m示例用法：\033[0m"
 	@echo "  make install    # 安装依赖"
-	@echo "  make dev       # 开发模式启动"
-	@echo "  make build     # 构建项目"
-	@echo "  make start     # 生产模式启动"
+	@echo "  make dev        # 开发模式启动（自动启动代理服务器）"
+	@echo "  make build      # 构建项目"
+	@echo "  make start      # 生产模式启动（自动启动代理服务器）"
 
 ## 监控状态
 .PHONY: status

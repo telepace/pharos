@@ -152,6 +152,14 @@ const AddPromptModal: React.FC<AddPromptModalProps> = ({
               {renderModelOption(LLMModel.DEEPSEEK_CHAT)}
             </Select.OptGroup>
 
+            {/* 火山模型 */}
+            <Select.OptGroup label="火山">
+              {renderModelOption(LLMModel.HUOSHAN_DEEPSEEK_R1)}
+              {renderModelOption(LLMModel.HUOSHAN_DEEPSEEK_R1_QWEN_32B)}
+              {renderModelOption(LLMModel.HUOSHAN_DEEPSEEK_R1_QWEN_7B)}
+              {renderModelOption(LLMModel.HUOSHAN_DEEPSEEK_V3)}
+            </Select.OptGroup>
+
             {/* 其他模型 */}
             <Select.OptGroup label="其他">
               {renderModelOption(LLMModel.GROK_3)}

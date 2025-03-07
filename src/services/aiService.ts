@@ -27,6 +27,12 @@ const getAIConfig = (provider: AIProvider): AIConfig => {
         apiKey: process.env.REACT_APP_DEEPSEEK_API_KEY || '',
         baseUrl: process.env.REACT_APP_DEEPSEEK_BASE_URL || 'https://api.deepseek.com'
       };
+    case AIProvider.HUOSHAN:
+      return {
+        provider: AIProvider.HUOSHAN,
+        apiKey: process.env.REACT_APP_HUOSHAN_API_KEY || '',
+        baseUrl: process.env.REACT_APP_HUOSHAN_BASE_URL || 'https://ark.cn-beijing.volces.com/api/v3'
+      };
     default:
       throw new Error(`不支持的AI提供商: ${provider}`);
   }
@@ -40,6 +46,11 @@ const getProviderFromModel = (model: LLMModel): AIProvider => {
     return AIProvider.CLAUDE;
   } else if (model.startsWith('gemini')) {
     return AIProvider.GEMINI;
+  } else if (model === LLMModel.HUOSHAN_DEEPSEEK_R1 || 
+             model === LLMModel.HUOSHAN_DEEPSEEK_R1_QWEN_32B || 
+             model === LLMModel.HUOSHAN_DEEPSEEK_R1_QWEN_7B || 
+             model === LLMModel.HUOSHAN_DEEPSEEK_V3) {
+    return AIProvider.HUOSHAN;
   } else if (model.startsWith('deepseek')) {
     return AIProvider.DEEPSEEK;
   }
@@ -249,6 +260,59 @@ const callDeepSeek = async (
   }
 };
 
+// 火山API调用
+const callHuoshan = async (
+  messages: Message[],
+  promptContent: string | null,
+  model: LLMModel,
+  config: AIConfig
+): Promise<AIResponse> => {
+  const formattedMessages = [
+    ...(promptContent ? [{ role: 'system', content: promptContent }] : []),
+    ...messages.map(msg => ({ role: msg.role, content: msg.content }))
+  ];
+
+  try {
+    // 使用本地代理服务器
+    const proxyUrl = 'http://localhost:3001/api/huoshan/chat/completions';
+    
+    console.log('火山API请求URL:', proxyUrl);
+    
+    const response = await fetch(proxyUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${config.apiKey}`
+      },
+      body: JSON.stringify({
+        model,
+        messages: formattedMessages
+      })
+    });
+
+    if (!response.ok) {
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('text/html')) {
+        const text = await response.text();
+        throw new Error(`服务器返回了HTML而不是JSON: ${text.substring(0, 100)}...`);
+      }
+      const errorData = await response.json().catch(() => ({ error: { message: '无法解析错误响应' } }));
+      throw new Error(`火山API错误: ${errorData.error?.message || response.statusText}`);
+    }
+
+    const data = await response.json();
+    return {
+      content: data.choices[0].message.content,
+      model,
+      provider: AIProvider.HUOSHAN,
+      usage: data.usage
+    };
+  } catch (error) {
+    console.error('火山API调用详细错误:', error);
+    throw error;
+  }
+};
+
 // 主要的API调用函数
 export const sendMessageToAI = async (
   messages: Message[],
@@ -274,6 +338,8 @@ export const sendMessageToAI = async (
         return await callGemini(messages, promptContent, model, config);
       case AIProvider.DEEPSEEK:
         return await callDeepSeek(messages, promptContent, model, config);
+      case AIProvider.HUOSHAN:
+        return await callHuoshan(messages, promptContent, model, config);
       default:
         throw new Error(`不支持的AI提供商: ${provider}`);
     }
@@ -318,6 +384,16 @@ export const getAvailableModels = (): { model: LLMModel; provider: AIProvider }[
     models.push(
       { model: LLMModel.DEEPSEEK_REASONER, provider: AIProvider.DEEPSEEK },
       { model: LLMModel.DEEPSEEK_CHAT, provider: AIProvider.DEEPSEEK }
+    );
+  }
+  
+  // 检查火山配置
+  if (process.env.REACT_APP_HUOSHAN_API_KEY) {
+    models.push(
+      { model: LLMModel.HUOSHAN_DEEPSEEK_R1, provider: AIProvider.HUOSHAN },
+      { model: LLMModel.HUOSHAN_DEEPSEEK_R1_QWEN_32B, provider: AIProvider.HUOSHAN },
+      { model: LLMModel.HUOSHAN_DEEPSEEK_R1_QWEN_7B, provider: AIProvider.HUOSHAN },
+      { model: LLMModel.HUOSHAN_DEEPSEEK_V3, provider: AIProvider.HUOSHAN }
     );
   }
   
@@ -366,6 +442,14 @@ export const testAIConnection = async (provider: AIProvider): Promise<boolean> =
         });
         return response.ok;
       }
+      case AIProvider.HUOSHAN: {
+        const response = await fetch(`${config.baseUrl}/models`, {
+          headers: {
+            'Authorization': `Bearer ${config.apiKey}`
+          }
+        });
+        return response.ok;
+      }
       default:
         return false;
     }
@@ -402,6 +486,12 @@ const printAIConfigurations = () => {
   console.log('\nDeepSeek配置:');
   console.log('基础URL:', deepseekConfig.baseUrl);
   console.log('API密钥:', deepseekConfig.apiKey ? '已配置' : '未配置');
+  
+  // 火山配置
+  const huoshanConfig = getAIConfig(AIProvider.HUOSHAN);
+  console.log('\n火山配置:');
+  console.log('基础URL:', huoshanConfig.baseUrl);
+  console.log('API密钥:', huoshanConfig.apiKey ? '已配置' : '未配置');
   
   console.log('\n=== 配置信息结束 ===\n');
 };

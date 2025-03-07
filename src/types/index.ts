@@ -47,14 +47,19 @@ export enum LLMModel {
   GPT4O_MINI_CA = 'gpt-4o-mini-ca',
   GPT4O_MINI = 'gpt-4o-mini',
   GPT4O = 'gpt-4o',
-  O3_MINI = 'o3-mini'
+  O3_MINI = 'o3-mini',
+  HUOSHAN_DEEPSEEK_R1 = 'deepseek-r1-250120',
+  HUOSHAN_DEEPSEEK_R1_QWEN_32B = 'deepseek-r1-distill-qwen-32b-250120',
+  HUOSHAN_DEEPSEEK_R1_QWEN_7B = 'deepseek-r1-distill-qwen-7b-250120',
+  HUOSHAN_DEEPSEEK_V3 = 'deepseek-v3-241226'
 }
 
 export enum AIProvider {
   OPENAI = 'openai',
   CLAUDE = 'claude',
   GEMINI = 'gemini',
-  DEEPSEEK = 'deepseek'
+  DEEPSEEK = 'deepseek',
+  HUOSHAN = 'huoshan'
 }
 
 export interface AIConfig {
