@@ -1,75 +1,138 @@
-# Pharos - Prompt管理与AI对话工具
+# Pharos - Prompt Management and AI Conversation Tool
 
-Pharos是一个专注于Prompt管理、长文结构化处理和AI场景化应用的工具。它提供了一个直观的界面，让用户可以轻松创建、管理和使用各种场景下的AI提示。
+Pharos is a tool focused on prompt management, long text structuring, and AI scenario-based applications. It provides an intuitive interface for users to easily create, manage, and use AI prompts in various scenarios.
 
-## 功能特点
+## Features
 
-- **双栏设计**：左侧聊天窗口，右侧Prompt管理面板
-- **场景管理**：创建和切换不同的场景（如写作助手、代码调试、学习问答等）
-- **Prompt预设**：在每个场景下创建和管理多个Prompt预设
-- **模型选择**：为每个Prompt选择不同的LLM模型
-- **即时应用**：选中Prompt后，聊天消息会自动附带该Prompt信息
-- **本地存储**：使用localStorage保存场景、Prompt和对话历史
+- **Two-column design**: Chat window on the left, prompt management panel on the right
+- **Scenario management**: Create and switch between different scenarios (e.g., writing assistant, code debugging, Q&A, etc.)
+- **Prompt presets**: Create and manage multiple prompt presets under each scenario
+- **Model selection**: Choose different LLM models for each prompt
+- **Instant application**: Selected prompts are automatically appended to chat messages
+- **Local storage**: Use localStorage to save scenarios, prompts, and chat history
 
-## 技术栈
+## Tech Stack
 
 - React + TypeScript
-- Ant Design UI组件库
-- React Context API进行状态管理
-- localStorage进行本地数据存储
+- Ant Design UI component library
+- React Context API for state management
+- localStorage for local data storage
 
-## 快速开始
+## Getting Started
 
-### 安装依赖
+### Prerequisites
+
+- Node.js (version >= 14)
+- npm (version >= 6)
+
+### Installation
+
+1. Clone the repository:
+
+```bash
+git clone https://github.com/yourusername/pharos.git
+```
+
+2. Navigate to the project directory:
+
+```bash
+cd pharos
+```
+
+3. Install dependencies:
 
 ```bash
 npm install
 ```
 
-### 启动开发服务器
+### Development
+
+To start the development server, run:
+
+```bash
+npm run dev
+```
+
+The application will be running at [http://localhost:3000](http://localhost:3000).
+
+### Building for Production
+
+To build the project for production, run:
+
+```bash
+npm run build
+```
+
+The optimized production build will be generated in the `_output` directory.
+
+### Running in Production
+
+To start the application in production mode, run:
 
 ```bash
 npm start
 ```
 
-应用将在 [http://localhost:3000](http://localhost:3000) 运行。
+### Docker Deployment
 
-## 使用指南
+To build and run the application using Docker:
 
-1. **创建场景**：点击右上角的"添加场景"按钮，创建一个新的场景
-2. **添加Prompt**：在场景下点击"添加提示"按钮，填写提示名称、内容和选择LLM模型
-3. **选择Prompt**：点击任意Prompt卡片，将其设为活动状态
-4. **发送消息**：在左侧聊天窗口输入消息并发送，系统会自动附带选中的Prompt
+1. Build the Docker image:
 
-## 项目结构
+```bash
+make docker-build
+```
+
+2. Run the Docker container:
+
+```bash
+make docker-run
+```
+
+The application will be accessible at `http://localhost:3000`.
+
+To stop the Docker container, run:
+
+```bash
+make docker-stop
+```
+
+## Usage Guide
+
+1. **Create a scenario**: Click the "Add Scenario" button in the top-right corner to create a new scenario
+2. **Add prompts**: Under the scenario, click the "Add Prompt" button, fill in the prompt name, content, and select the LLM model
+3. **Select a prompt**: Click on any prompt card to set it as active
+4. **Send messages**: Type and send messages in the left chat window, the system will automatically append the selected prompt
+
+## Project Structure
 
 ```
 pharos/
 ├── src/
-│   ├── components/       # UI组件
-│   │   ├── Chat/         # 聊天相关组件
-│   │   ├── Prompt/       # Prompt管理相关组件
-│   │   └── Layout/       # 布局组件
-│   ├── contexts/         # React上下文
-│   ├── services/         # 服务层
-│   ├── types/            # TypeScript类型定义
-│   ├── App.tsx           # 应用入口
-│   └── index.tsx         # 渲染入口
-└── public/               # 静态资源
+│   ├── components/       # UI components
+│   │   ├── Chat/         # Chat-related components
+│   │   ├── Prompt/       # Prompt management components
+│   │   └── Layout/       # Layout components
+│   ├── contexts/         # React contexts
+│   ├── services/         # Service layer
+│   ├── types/            # TypeScript type definitions
+│   ├── App.tsx           # Application entry point
+│   └── index.tsx         # Rendering entry point
+└── public/               # Static assets
 ```
 
-## 未来计划
+## Future Plans
 
-- 添加联网搜索功能
-- 实现长文本结构化处理
-- 支持导入/导出Prompt配置
-- 添加更多AI模型支持
-- 实现云端存储和同步
+- Add online search functionality
+- Implement long text structuring
+- Support importing/exporting prompt configurations
+- Add support for more AI models
+- Implement cloud storage and synchronization
 
-## 贡献指南
+## Contributing
 
-欢迎提交问题和功能请求！如果您想贡献代码，请先创建一个issue讨论您想要更改的内容。
+Issues and feature requests are welcome! If you want to contribute code, please create an issue first to discuss the changes you'd like to make.
 
-## 许可证
+## License
 
-MIT
+This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.
