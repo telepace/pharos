@@ -76,4 +76,9 @@ code {
 .prompt-card.active {
   border-color: #1890ff;
   background-color: #e6f7ff;
+}
+
+.right-panel {
+  background: linear-gradient(to bottom, #1f1f1f, #2f2f2f);
+  color: white;
 } 
