@@ -5,7 +5,7 @@ import Message from './Message';
 import MessageInput from './MessageInput';
 
 const ChatWindow: React.FC = () => {
-  const { messages, isLoading, isStreaming } = useChatContext();
+  const { messages, isLoading, isStreaming, observationIds } = useChatContext();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   // 自动滚动到底部
@@ -54,7 +54,11 @@ const ChatWindow: React.FC = () => {
           />
         ) : (
           messages.map(message => (
-            <Message key={message.id} message={message} />
+            <Message 
+              key={message.id} 
+              message={message} 
+              observationId={message.role === 'assistant' ? observationIds[message.id] : undefined}
+            />
           ))
         )}
         {isLoading && !isStreaming && (

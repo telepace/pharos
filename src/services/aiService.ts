@@ -1,4 +1,5 @@
 import { Message, LLMModel, AIProvider, AIConfig, AIResponse, AIRequestMessage, PromptType } from '../types';
+import { getOrCreateTrace, trackUserMessage, trackAIGeneration, trackError } from './langfuseService';
 
 // 从环境变量中获取配置
 const getAIConfig = (provider: AIProvider): AIConfig => {
@@ -689,7 +690,8 @@ export const sendMessageToAI = async (
     useGlobalPrompt?: boolean,
     globalPromptType?: PromptType
   },
-  streamCallback?: (chunk: string) => void
+  streamCallback?: (chunk: string) => void,
+  conversationId?: string
 ): Promise<AIResponse> => {
   // 如果使用全局设置，并且提供了全局设置
   let finalModel = model;
@@ -715,30 +717,66 @@ export const sendMessageToAI = async (
     }
   }
 
+  // 创建 Langfuse 跟踪（如果提供了会话ID）
+  let trace = null;
+  if (conversationId) {
+    trace = getOrCreateTrace(conversationId);
+    
+    // 跟踪最后一条用户消息
+    const lastUserMessage = [...messages].reverse().find(m => m.role === 'user');
+    if (lastUserMessage) {
+      trackUserMessage(trace, lastUserMessage);
+    }
+  }
+
   try {
     // 确定AI提供商
     const provider = getProviderFromModel(finalModel);
     const config = getAIConfig(provider);
 
     // 根据提供商调用相应的API
+    let response: AIResponse;
     switch (provider) {
       case AIProvider.OPENAI:
-        return await callOpenAI(messages, finalPromptContent, finalModel, config, streamCallback);
+        response = await callOpenAI(messages, finalPromptContent, finalModel, config, streamCallback);
+        break;
       case AIProvider.CLAUDE:
-        return await callClaude(messages, finalPromptContent, finalModel, config, streamCallback);
+        response = await callClaude(messages, finalPromptContent, finalModel, config, streamCallback);
+        break;
       case AIProvider.GEMINI:
-        return await callGemini(messages, finalPromptContent, finalModel, config, streamCallback);
+        response = await callGemini(messages, finalPromptContent, finalModel, config, streamCallback);
+        break;
       case AIProvider.DEEPSEEK:
-        return await callDeepSeek(messages, finalPromptContent, finalModel, config, streamCallback);
+        response = await callDeepSeek(messages, finalPromptContent, finalModel, config, streamCallback);
+        break;
       case AIProvider.HUOSHAN:
-        return await callHuoshan(messages, finalPromptContent, finalModel, config, streamCallback);
+        response = await callHuoshan(messages, finalPromptContent, finalModel, config, streamCallback);
+        break;
       case AIProvider.QWEN:
-        return await callQwen(messages, finalPromptContent, finalModel, config, streamCallback);
+        response = await callQwen(messages, finalPromptContent, finalModel, config, streamCallback);
+        break;
       default:
         throw new Error(`不支持的AI提供商: ${provider}`);
     }
+
+    // 记录 AI 生成结果
+    if (trace) {
+      trackAIGeneration(trace, messages, finalPromptContent, finalModel, provider, response);
+    }
+
+    return response;
   } catch (error) {
     console.error('发送消息到AI时出错:', error);
+    
+    // 记录错误
+    if (trace) {
+      trackError(trace, error, {
+        model: finalModel,
+        messages: messages.length,
+        hasPrompt: !!finalPromptContent
+      });
+    }
+    
     throw error;
   }
 };

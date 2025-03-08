@@ -13,6 +13,7 @@ import {
   deleteConversation
 } from '../services/localStorage';
 import { LLMModel, PromptType } from '../types';
+import { getOrCreateTrace, trackAIGeneration } from '../services/langfuseService';
 
 interface ChatContextType {
   conversations: Conversation[];
@@ -21,6 +22,7 @@ interface ChatContextType {
   isLoading: boolean;
   isStreaming: boolean;
   streamingMessageId: string | null;
+  observationIds: Record<string, string>;
   sendMessage: (content: string) => Promise<void>;
   clearMessages: () => void;
   createNewConversation: () => void;
@@ -50,6 +52,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
+  const [observationIds, setObservationIds] = useState<Record<string, string>>({});
   
   const { getActivePrompt } = usePromptContext();
   const { activeSceneId } = useSceneContext();
@@ -335,8 +338,30 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           useGlobalPrompt: settings.useGlobalPrompt,
           globalPromptType: settings.globalPromptType
         },
-        handleStreamChunk // 传递流式处理回调
+        handleStreamChunk, // 传递流式处理回调
+        currentConversation?.id // 传递会话ID用于监控
       );
+      
+      // 创建 Langfuse 跟踪并记录 AI 生成
+      const trace = getOrCreateTrace(currentConversation.id, currentConversation.name);
+      if (trace) {
+        const generation = trackAIGeneration(
+          trace,
+          updatedMessages,
+          activePrompt?.content || null,
+          activePrompt?.model as LLMModel || LLMModel.GPT35,
+          aiResponse.provider,
+          aiResponse
+        );
+        
+        // 保存生成的 observationId，用于后续反馈
+        if (generation) {
+          setObservationIds(prev => ({
+            ...prev,
+            [assistantMessageId]: generation.id
+          }));
+        }
+      }
       
       // 流式响应完成后，确保最终消息内容与AI响应一致
       setMessages(currentMessages => {
@@ -427,6 +452,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         isLoading,
         isStreaming,
         streamingMessageId,
+        observationIds,
         sendMessage,
         clearMessages,
         createNewConversation,

@@ -10,6 +10,7 @@ Pharos is a tool focused on prompt management, long text structuring, and AI sce
 - **Model selection**: Choose different LLM models for each prompt
 - **Instant application**: Selected prompts are automatically appended to chat messages
 - **Local storage**: Use localStorage to save scenarios, prompts, and chat history
+- **AI Monitoring**: Integrated with Langfuse for comprehensive AI monitoring and analytics
 
 ## Tech Stack
 
@@ -136,3 +137,38 @@ Issues and feature requests are welcome! If you want to contribute code, please 
 ## License
 
 This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.
+
+## AI Monitoring with Langfuse
+
+Pharos integrates with [Langfuse](https://langfuse.com) to provide comprehensive monitoring and analytics for your AI interactions:
+
+### Monitoring Features
+
+- **Request Tracking**: Monitor all AI requests and responses
+- **Token Usage**: Track token consumption across different models
+- **User Feedback**: Collect and analyze user feedback on AI responses
+- **Error Monitoring**: Identify and troubleshoot issues in real-time
+- **Performance Analytics**: Analyze response times and model performance
+
+### Setup Langfuse
+
+1. Sign up for a free account at [Langfuse](https://cloud.langfuse.com)
+2. Get your API keys from the Langfuse dashboard
+3. Add your Langfuse credentials to the `.env` file:
+
+```
+# Langfuse 监控配置
+REACT_APP_LANGFUSE_SECRET_KEY='your-secret-key'
+REACT_APP_LANGFUSE_PUBLIC_KEY='your-public-key'
+REACT_APP_LANGFUSE_HOST='https://cloud.langfuse.com'
+```
+
+4. Access the monitoring dashboard from the Settings page in Pharos
+
+### User Feedback Collection
+
+Pharos automatically adds feedback buttons to AI responses, allowing users to:
+
+- Provide thumbs up/down feedback on responses
+- Add detailed comments about response quality
+- Help improve AI performance over time
