@@ -54,7 +54,7 @@ const MainLayout: React.FC = () => {
   return (
     <Layout style={{ height: '100vh' }}>
       <Header style={{ background: '#fff', padding: '0 24px', borderBottom: '1px solid #f0f0f0' }}>
-        <Title level={3} style={{ margin: '16px 0' }}>Pharos - Prompt管理与AI对话</Title>
+        <Title level={3} style={{ margin: '16px 0' }}>Pharos - AI指令管理</Title>
       </Header>
       <Layout>
         {/* 左侧可调节边栏 */}

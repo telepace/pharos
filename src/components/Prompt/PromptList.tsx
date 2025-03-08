@@ -56,7 +56,7 @@ const PromptList: React.FC = () => {
     <div className="prompt-list-container" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div className="prompt-list-header">
         <Title level={4} style={{ margin: 0 }}>
-          {activeScene ? `${activeScene.name}的提示列表` : '提示列表'}
+          {activeScene ? `AI指令列表` : '指令列表'}
         </Title>
         <Button
           type="primary"
@@ -64,7 +64,7 @@ const PromptList: React.FC = () => {
           onClick={handleAddPrompt}
           disabled={!activeSceneId}
         >
-          添加提示
+          AI指令
         </Button>
       </div>
       

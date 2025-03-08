@@ -63,7 +63,7 @@ const PromptItem: React.FC<PromptItemProps> = ({ prompt }) => {
       <Card
         hoverable
         style={{ 
-          marginBottom: 16, 
+          marginBottom: 4, 
           borderColor: isActive ? '#1890ff' : undefined,
           backgroundColor: isActive ? '#e6f7ff' : undefined,
           borderLeft: `4px solid ${getTypeTagColor()}`
@@ -71,21 +71,26 @@ const PromptItem: React.FC<PromptItemProps> = ({ prompt }) => {
         onClick={handleSelect}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div>
-            <Space align="center">
+          <div style={{ flexGrow: 1, overflow: 'hidden', paddingRight: 8 }}>
+            <Space align="center" style={{ marginBottom: 4 }}>
               <Text strong>{prompt.name}</Text>
+              {/* 注释掉类型标签
               <Tag color={getTypeTagColor()}>{getTypeTagText()}</Tag>
               {isActive && <CheckCircleOutlined style={{ color: '#1890ff' }} />}
+              */}
             </Space>
-            <Paragraph 
-              ellipsis={{ rows: 2, expandable: true, symbol: '展开' }}
-              style={{ marginBottom: 8 }}
-            >
-              {prompt.content}
-            </Paragraph>
-            <Text type="secondary">模型: {prompt.model}</Text>
+            {false && (
+              <Paragraph 
+                ellipsis={{ rows: 2, expandable: true, symbol: '展开' }}
+                style={{ marginBottom: 8 }}
+              >
+                {prompt.content}
+              </Paragraph>
+            )}
+            <br />
+            <Text type="secondary" style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>模型: {prompt.model}</Text>
           </div>
-          <Space>
+          <Space style={{ flexShrink: 0 }}>
             <Tooltip title="编辑">
               <Button 
                 type="text" 
@@ -94,6 +99,7 @@ const PromptItem: React.FC<PromptItemProps> = ({ prompt }) => {
                 onClick={handleEdit}
               />
             </Tooltip>
+            {/* 暂时注释掉"从场景中移除"按钮
             <Tooltip title="从场景中移除">
               <Button 
                 type="text" 
@@ -102,6 +108,7 @@ const PromptItem: React.FC<PromptItemProps> = ({ prompt }) => {
                 onClick={handleRemove}
               />
             </Tooltip>
+            */}
             <Tooltip title="删除">
               <Button 
                 type="text" 
@@ -143,4 +150,4 @@ const PromptItem: React.FC<PromptItemProps> = ({ prompt }) => {
   );
 };
 
-export default PromptItem; 
+export default PromptItem;
