@@ -60,7 +60,7 @@ const getProviderFromModel = (model: LLMModel): AIProvider => {
     return AIProvider.HUOSHAN;
   } else if (model.startsWith('deepseek')) {
     return AIProvider.DEEPSEEK;
-  } else if (model.startsWith('qwen')) {
+  } else if (model.startsWith('qwen') || model.startsWith('qwq')) {
     return AIProvider.QWEN;
   }
   throw new Error(`无法确定模型 ${model} 的提供商`);
@@ -599,20 +599,36 @@ const callQwen = async (
   ];
 
   try {
-    // 如果提供了流回调函数，则使用流式响应
-    const isStream = !!streamCallback;
+    // QWQ模型只支持流式输出
+    const isQWQModel = model.toString().startsWith('qwq');
+    const isStream = !!streamCallback || isQWQModel;
     
+    // 准备请求体
+    const requestBody: any = {
+      model,
+      messages: formattedMessages,
+      stream: isStream
+    };
+    
+    // QWQ模型特殊处理
+    if (isQWQModel) {
+      // QWQ模型默认incremental_output为true，且不支持设置为false
+      requestBody.incremental_output = true;
+      
+      // 对于QWQ模型，我们不设置response_format参数
+      // 根据错误信息，response_format需要是一个包含type字段的对象
+      // 但是我们尝试不设置这个参数，让API使用默认值
+    }
+
+    console.log('发送请求到千问API:', JSON.stringify(requestBody, null, 2));
+
     const response = await fetch(`${config.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${config.apiKey}`
       },
-      body: JSON.stringify({
-        model,
-        messages: formattedMessages,
-        stream: isStream
-      })
+      body: JSON.stringify(requestBody)
     });
 
     if (!response.ok) {
@@ -621,10 +637,11 @@ const callQwen = async (
     }
 
     // 处理流式响应
-    if (isStream && streamCallback && response.body) {
+    if (isStream && response.body) {
       const reader = response.body.getReader();
       const decoder = new TextDecoder('utf-8');
       let fullContent = '';
+      let reasoningContent = '';
       
       return new Promise<AIResponse>(async (resolve, reject) => {
         try {
@@ -641,10 +658,35 @@ const callQwen = async (
               if (line.startsWith('data: ')) {
                 try {
                   const jsonData = JSON.parse(line.slice(6));
-                  if (jsonData.choices && jsonData.choices[0]?.delta?.content) {
+                  
+                  // 处理QWQ模型的特殊响应格式
+                  if (isQWQModel && jsonData.choices && jsonData.choices[0]?.delta) {
+                    const delta = jsonData.choices[0].delta;
+                    
+                    // 处理思考过程
+                    if (delta.reasoning_content) {
+                      reasoningContent += delta.reasoning_content;
+                      // 如果有回调函数，可以选择是否传递思考过程
+                      if (streamCallback) {
+                        // 可以选择是否将思考过程传递给UI
+                        // streamCallback(`[思考] ${delta.reasoning_content}`);
+                      }
+                    } 
+                    // 处理正式回复
+                    else if (delta.content) {
+                      fullContent += delta.content;
+                      if (streamCallback) {
+                        streamCallback(delta.content);
+                      }
+                    }
+                  } 
+                  // 处理标准流式响应
+                  else if (jsonData.choices && jsonData.choices[0]?.delta?.content) {
                     const content = jsonData.choices[0].delta.content;
                     fullContent += content;
-                    streamCallback(content);
+                    if (streamCallback) {
+                      streamCallback(content);
+                    }
                   }
                 } catch (e) {
                   console.warn('解析千问流数据时出错:', e);
@@ -653,11 +695,19 @@ const callQwen = async (
             }
           }
           
-          resolve({
+          // 构建响应对象
+          const aiResponse: AIResponse = {
             content: fullContent,
-            model,
+            model: model.toString(),
             provider: AIProvider.QWEN
-          });
+          };
+          
+          // 如果有思考过程，添加到响应中
+          if (reasoningContent) {
+            aiResponse.reasoning = reasoningContent;
+          }
+          
+          resolve(aiResponse);
         } catch (error) {
           reject(error);
         }
@@ -668,7 +718,7 @@ const callQwen = async (
     const data = await response.json();
     return {
       content: data.choices[0].message.content,
-      model,
+      model: model.toString(),
       provider: AIProvider.QWEN
     };
   } catch (error) {

@@ -56,7 +56,7 @@ export enum LLMModel {
   QWEN_PLUS = 'qwen-plus',
   QWEN_PLUS_LATEST = 'qwen-plus-latest',
   QWEN_MAX = 'qwen-max',
-  QWQ_PLUS = 'qwq-plus'
+  QWQ_PLUS = 'qwq-32b'
 }
 
 export enum AIProvider {
@@ -83,6 +83,7 @@ export interface AIResponse {
     completionTokens: number;
     totalTokens: number;
   };
+  reasoning?: string;
 }
 
 export interface AIRequestMessage {
