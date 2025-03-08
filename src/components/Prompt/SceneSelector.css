@@ -11,18 +11,22 @@
 }
 
 .tab-actions {
-  display: flex;
+  display: none;
   align-items: center;
-  transition: opacity 0.2s ease-in-out;
   position: absolute;
   right: 4px;
   background: rgba(255, 255, 255, 0.9);
   border-radius: 4px;
   padding: 0 2px;
+  opacity: 0;
+  transform: translateY(-2px);
+  transition: all 0.25s ease-in-out;
 }
 
 .custom-tab:hover .tab-actions {
-  opacity: 1 !important;
+  display: flex !important;
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .tab-action-btn {
@@ -34,12 +38,13 @@
   min-width: 20px;
   border-radius: 4px;
   margin: 0 1px;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
   padding: 0;
 }
 
 .tab-action-btn:hover {
   background-color: rgba(0, 0, 0, 0.05);
+  transform: scale(1.05);
 }
 
 .tab-action-btn[danger]:hover {

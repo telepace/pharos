@@ -87,7 +87,7 @@ const SceneSelector: React.FC = () => {
             <div className="tab-content">
               {node}
             </div>
-            <div className="tab-actions" style={{ opacity: isActive ? 1 : 0 }}>
+            <div className="tab-actions" style={{ display: 'none' }}>
               <Tooltip title="编辑场景">
                 <Button
                   type="text"
@@ -133,7 +133,6 @@ const SceneSelector: React.FC = () => {
             onClick={handleAddScene}
             size="small"
           >
-            添加场景
           </Button>
         }
         style={{ marginBottom: 16 }}
@@ -162,7 +161,7 @@ const SceneSelector: React.FC = () => {
         </Form>
       </Modal>
       
-      {/* 编辑场景对话框 */}
+      {/* 编辑对话框 */}
       <Modal
         title="编辑场景"
         open={isEditModalVisible}
