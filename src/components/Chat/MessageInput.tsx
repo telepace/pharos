@@ -8,13 +8,14 @@ const { TextArea } = Input;
 
 const MessageInput: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
-  const { sendMessage, clearMessages, isLoading } = useChatContext();
+  const { sendMessage, clearMessages, isLoading, isStreaming } = useChatContext();
   const { getActivePrompt } = usePromptContext();
   
   const activePrompt = getActivePrompt();
+  const isDisabled = isLoading || isStreaming;
   
   const handleSend = () => {
-    if (inputValue.trim() && !isLoading) {
+    if (inputValue.trim() && !isDisabled) {
       sendMessage(inputValue);
       setInputValue('');
     }
@@ -41,19 +42,20 @@ const MessageInput: React.FC = () => {
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="输入消息..."
+          placeholder={isStreaming ? "AI正在回复中..." : "输入消息..."}
           autoSize={{ minRows: 1, maxRows: 4 }}
           style={{ borderRadius: '4px 0 0 4px' }}
-          disabled={isLoading}
+          disabled={isDisabled}
         />
         <Button 
           type="primary" 
           icon={<SendOutlined />} 
           onClick={handleSend}
           loading={isLoading}
+          disabled={isStreaming}
           style={{ borderRadius: '0 4px 4px 0' }}
         >
-          发送
+          {isStreaming ? "生成中" : "发送"}
         </Button>
       </Space.Compact>
       <div style={{ marginTop: 8, textAlign: 'right' }}>
@@ -62,6 +64,7 @@ const MessageInput: React.FC = () => {
           icon={<ClearOutlined />} 
           onClick={clearMessages}
           size="small"
+          disabled={isStreaming}
         >
           清空对话
         </Button>

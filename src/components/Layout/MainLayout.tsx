@@ -1,14 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Typography } from 'antd';
+import { Layout, Typography, Tabs, Button } from 'antd';
 import { Resizable, ResizeCallbackData } from 'react-resizable';
+import { SettingOutlined } from '@ant-design/icons';
 import ChatWindow from '../Chat/ChatWindow';
 import SceneSelector from '../Prompt/SceneSelector';
 import PromptList from '../Prompt/PromptList';
 import ConversationList from '../Chat/ConversationList';
+import SettingsPage from '../Settings/SettingsPage';
 import './MainLayout.css';
 
 const { Header, Content, Sider } = Layout;
 const { Title } = Typography;
+const { TabPane } = Tabs;
+
+// 定义页面类型
+type PageType = 'chat' | 'settings';
 
 const MainLayout: React.FC = () => {
   // 从 localStorage 读取保存的宽度，如果没有则使用默认值
@@ -26,6 +32,9 @@ const MainLayout: React.FC = () => {
     const saved = localStorage.getItem('rightSiderWidth');
     return saved ? parseInt(saved) : 300;
   });
+
+  // 当前活动页面
+  const [activePage, setActivePage] = useState<PageType>('chat');
 
   // 保存宽度到 localStorage
   const saveWidths = () => {
@@ -51,101 +60,130 @@ const MainLayout: React.FC = () => {
     setRightSiderWidth(size.width);
   };
 
+  // 切换到设置页面
+  const showSettings = () => {
+    setActivePage('settings');
+  };
+
+  // 切换到聊天页面
+  const showChat = () => {
+    setActivePage('chat');
+  };
+
   return (
     <Layout style={{ height: '100vh' }}>
-      <Header style={{ background: '#fff', padding: '0 24px', borderBottom: '1px solid #f0f0f0' }}>
+      <Header style={{ 
+        background: '#fff', 
+        padding: '0 24px', 
+        borderBottom: '1px solid #f0f0f0',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
         <Title level={3} style={{ margin: '16px 0' }}>Pharos - AI指令管理</Title>
-      </Header>
-      <Layout>
-        {/* 左侧可调节边栏 */}
-        <Resizable
-          width={leftSiderWidth}
-          height={window.innerHeight - 64} // 减去header高度
-          onResize={onLeftSiderResize}
-          minConstraints={[200, window.innerHeight - 64]}
-          maxConstraints={[400, window.innerHeight - 64]}
-          handle={<div className="custom-handle custom-handle-e" />}
-          axis="x"
-          resizeHandles={['e']}
+        <Button 
+          type={activePage === 'settings' ? 'primary' : 'default'}
+          icon={<SettingOutlined />} 
+          onClick={showSettings}
         >
-          <Sider 
-            width={leftSiderWidth}
-            style={{ 
-              background: '#fff',
-              height: 'calc(100vh - 64px)',
-              overflow: 'hidden'
-            }}
-          >
-            <div style={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              height: '100%', 
-              padding: '16px' 
-            }}>
-              <ConversationList />
-            </div>
-          </Sider>
-        </Resizable>
-
-        {/* 主内容区域 */}
-        <Layout style={{ position: 'relative' }}>
+          设置
+        </Button>
+      </Header>
+      
+      {activePage === 'settings' ? (
+        <SettingsPage onBack={showChat} />
+      ) : (
+        <Layout>
+          {/* 左侧可调节边栏 */}
           <Resizable
-            width={contentWidth}
-            height={window.innerHeight - 64}
-            onResize={onContentResize}
-            minConstraints={[window.innerWidth * 0.3, window.innerHeight - 64]}
-            maxConstraints={[window.innerWidth * 0.7, window.innerHeight - 64]}
+            width={leftSiderWidth}
+            height={window.innerHeight - 64} // 减去header高度
+            onResize={onLeftSiderResize}
+            minConstraints={[200, window.innerHeight - 64]}
+            maxConstraints={[400, window.innerHeight - 64]}
             handle={<div className="custom-handle custom-handle-e" />}
             axis="x"
             resizeHandles={['e']}
           >
-            <Content style={{ 
-              padding: '24px',
-              height: 'calc(100vh - 64px)',
-              overflow: 'hidden',
-              background: '#fff'
-            }}>
-              <ChatWindow />
-            </Content>
-          </Resizable>
-
-          {/* 右侧提示区域 - 添加可调整大小功能 */}
-          <Resizable
-            width={rightSiderWidth}
-            height={window.innerHeight - 64}
-            onResize={onRightSiderResize}
-            minConstraints={[250, window.innerHeight - 64]}
-            maxConstraints={[500, window.innerHeight - 64]}
-            handle={<div className="custom-handle custom-handle-w" />}
-            axis="x"
-            resizeHandles={['w']}
-          >
             <Sider 
-              width={rightSiderWidth}
+              width={leftSiderWidth}
               style={{ 
-                background: '#fff', 
-                padding: '24px 24px 0 24px',
+                background: '#fff',
                 height: 'calc(100vh - 64px)',
-                overflow: 'hidden',
-                display: 'flex',
-                flexDirection: 'column'
+                overflow: 'hidden'
               }}
             >
-              <SceneSelector />
               <div style={{ 
-                flex: 1, 
-                overflow: 'auto',
-                marginTop: '16px',
-                display: 'flex',
-                flexDirection: 'column',
-                height: 'calc(100% - 70px)'
+                display: 'flex', 
+                flexDirection: 'column', 
+                height: '100%', 
+                padding: '16px' 
               }}>
-                <PromptList />
+                <ConversationList />
               </div>
             </Sider>
           </Resizable>
+
+          {/* 主内容区域 */}
+          <Layout style={{ position: 'relative' }}>
+            <Resizable
+              width={contentWidth}
+              height={window.innerHeight - 64}
+              onResize={onContentResize}
+              minConstraints={[window.innerWidth * 0.3, window.innerHeight - 64]}
+              maxConstraints={[window.innerWidth * 0.7, window.innerHeight - 64]}
+              handle={<div className="custom-handle custom-handle-e" />}
+              axis="x"
+              resizeHandles={['e']}
+            >
+              <Content style={{ 
+                padding: '24px',
+                height: 'calc(100vh - 64px)',
+                overflow: 'hidden',
+                background: '#fff'
+              }}>
+                <ChatWindow />
+              </Content>
+            </Resizable>
+
+            {/* 右侧提示区域 - 添加可调整大小功能 */}
+            <Resizable
+              width={rightSiderWidth}
+              height={window.innerHeight - 64}
+              onResize={onRightSiderResize}
+              minConstraints={[250, window.innerHeight - 64]}
+              maxConstraints={[500, window.innerHeight - 64]}
+              handle={<div className="custom-handle custom-handle-w" />}
+              axis="x"
+              resizeHandles={['w']}
+            >
+              <Sider 
+                width={rightSiderWidth}
+                style={{ 
+                  background: '#fff', 
+                  padding: '24px 24px 0 24px',
+                  height: 'calc(100vh - 64px)',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column'
+                }}
+              >
+                <SceneSelector />
+                <div style={{ 
+                  flex: 1, 
+                  overflow: 'auto',
+                  marginTop: '16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  height: 'calc(100% - 70px)'
+                }}>
+                  <PromptList />
+                </div>
+              </Sider>
+            </Resizable>
+          </Layout>
         </Layout>
-      </Layout>
+      )}
     </Layout>
   );
 };

@@ -161,4 +161,103 @@ code {
 
 .tab-action-btn:hover {
   background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* 深色主题样式 */
+body.dark-theme {
+  background-color: #1f1f1f;
+  color: #f0f0f0;
+}
+
+.dark-theme .ant-layout {
+  background-color: #1f1f1f;
+}
+
+.dark-theme .ant-layout-header {
+  background-color: #141414;
+  border-color: #303030;
+}
+
+.dark-theme .ant-layout-sider {
+  background-color: #141414;
+}
+
+.dark-theme .ant-layout-content {
+  background-color: #141414;
+}
+
+.dark-theme .ant-card {
+  background-color: #141414;
+  border-color: #303030;
+}
+
+.dark-theme .ant-card-head {
+  border-color: #303030;
+}
+
+.dark-theme .ant-input,
+.dark-theme .ant-input-affix-wrapper,
+.dark-theme .ant-select-selector,
+.dark-theme .ant-select-dropdown {
+  background-color: #1f1f1f;
+  border-color: #303030;
+  color: #f0f0f0;
+}
+
+.dark-theme .ant-btn {
+  border-color: #303030;
+}
+
+.dark-theme .ant-list-item {
+  border-color: #303030;
+}
+
+.dark-theme .ant-divider {
+  border-color: #303030;
+}
+
+.dark-theme .custom-handle {
+  background-color: #303030;
+}
+
+/* 打字机光标闪烁效果 */
+.typing-indicator {
+  display: inline-block;
+  width: 4px;
+  height: 16px;
+  background-color: #333;
+  margin-left: 2px;
+  animation: blink 0.7s infinite;
+  vertical-align: middle;
+}
+
+@keyframes blink {
+  0% { opacity: 1; }
+  50% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+/* 流式消息样式 */
+.streaming-message {
+  border-left: 3px solid #52c41a;
+}
+
+/* 消息高亮动画 */
+.message-highlight {
+  animation: highlight 0.3s ease;
+}
+
+@keyframes highlight {
+  0% { background-color: rgba(82, 196, 26, 0.2); }
+  100% { background-color: inherit; }
+}
+
+/* 消息内容过渡效果 */
+.message-bubble p {
+  transition: opacity 0.2s ease;
+}
+
+/* 流式输出时的消息容器样式 */
+.message-bubble.streaming-message {
+  box-shadow: 0 0 8px rgba(82, 196, 26, 0.3);
 } 

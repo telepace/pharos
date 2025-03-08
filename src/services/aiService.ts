@@ -70,7 +70,8 @@ const callOpenAI = async (
   messages: Message[],
   promptContent: string | null,
   model: LLMModel,
-  config: AIConfig
+  config: AIConfig,
+  streamCallback?: (chunk: string) => void
 ): Promise<AIResponse> => {
   const formattedMessages = [
     ...(promptContent ? [{ role: 'system', content: promptContent }] : []),
@@ -78,6 +79,9 @@ const callOpenAI = async (
   ];
 
   try {
+    // 如果提供了流回调函数，则使用流式响应
+    const isStream = !!streamCallback;
+    
     const response = await fetch(`${config.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -86,7 +90,8 @@ const callOpenAI = async (
       },
       body: JSON.stringify({
         model,
-        messages: formattedMessages
+        messages: formattedMessages,
+        stream: isStream
       })
     });
 
@@ -100,6 +105,53 @@ const callOpenAI = async (
       throw new Error(`OpenAI API错误: ${errorData.error?.message || response.statusText}`);
     }
 
+    // 处理流式响应
+    if (isStream && streamCallback && response.body) {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let fullContent = '';
+      
+      // 返回一个Promise，在流处理完成后解析
+      return new Promise<AIResponse>(async (resolve, reject) => {
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            const chunk = decoder.decode(value);
+            const lines = chunk
+              .split('\n')
+              .filter(line => line.trim() !== '' && line.trim() !== 'data: [DONE]');
+            
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const jsonData = JSON.parse(line.slice(6));
+                  if (jsonData.choices && jsonData.choices[0]?.delta?.content) {
+                    const content = jsonData.choices[0].delta.content;
+                    fullContent += content;
+                    streamCallback(content);
+                  }
+                } catch (e) {
+                  console.warn('解析流数据时出错:', e);
+                }
+              }
+            }
+          }
+          
+          // 流处理完成后返回完整响应
+          resolve({
+            content: fullContent,
+            model,
+            provider: AIProvider.OPENAI
+          });
+        } catch (error) {
+          reject(error);
+        }
+      });
+    }
+
+    // 处理非流式响应
     const data = await response.json();
     return {
       content: data.choices[0].message.content,
@@ -108,7 +160,7 @@ const callOpenAI = async (
       usage: data.usage
     };
   } catch (error) {
-    console.error('API调用详细错误:', error);
+    console.error('OpenAI API调用失败:', error);
     throw error;
   }
 };
@@ -118,7 +170,8 @@ const callClaude = async (
   messages: Message[],
   promptContent: string | null,
   model: LLMModel,
-  config: AIConfig
+  config: AIConfig,
+  streamCallback?: (chunk: string) => void
 ): Promise<AIResponse> => {
   // 构建Claude消息格式
   let systemPrompt = promptContent || '';
@@ -131,38 +184,86 @@ const callClaude = async (
     };
   });
 
-  const response = await fetch(`${config.baseUrl}/messages`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': config.apiKey,
-      'anthropic-version': '2023-06-01'
-    },
-    body: JSON.stringify({
-      model,
-      system: systemPrompt,
-      messages: conversation,
-      max_tokens: 4000
-    })
-  });
+  try {
+    // 如果提供了流回调函数，则使用流式响应
+    const isStream = !!streamCallback;
+    
+    const response = await fetch(`${config.baseUrl}/v1/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': config.apiKey,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model,
+        messages: conversation,
+        system: systemPrompt || undefined,
+        stream: isStream,
+        max_tokens: 4000
+      })
+    });
 
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(`Claude API错误: ${errorData.error?.message || response.statusText}`);
-  }
-
-  const data = await response.json();
-  
-  return {
-    content: data.content[0].text,
-    model,
-    provider: AIProvider.CLAUDE,
-    usage: {
-      promptTokens: data.usage?.input_tokens || 0,
-      completionTokens: data.usage?.output_tokens || 0,
-      totalTokens: (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0)
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`Claude API错误: ${errorData.error?.message || response.statusText}`);
     }
-  };
+
+    // 处理流式响应
+    if (isStream && streamCallback && response.body) {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let fullContent = '';
+      
+      return new Promise<AIResponse>(async (resolve, reject) => {
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            const chunk = decoder.decode(value);
+            const lines = chunk
+              .split('\n')
+              .filter(line => line.trim() !== '' && line.trim() !== 'data: [DONE]');
+            
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const jsonData = JSON.parse(line.slice(6));
+                  if (jsonData.type === 'content_block_delta' && jsonData.delta?.text) {
+                    const content = jsonData.delta.text;
+                    fullContent += content;
+                    streamCallback(content);
+                  }
+                } catch (e) {
+                  console.warn('解析Claude流数据时出错:', e);
+                }
+              }
+            }
+          }
+          
+          resolve({
+            content: fullContent,
+            model,
+            provider: AIProvider.CLAUDE
+          });
+        } catch (error) {
+          reject(error);
+        }
+      });
+    }
+
+    // 处理非流式响应
+    const data = await response.json();
+    return {
+      content: data.content[0].text,
+      model,
+      provider: AIProvider.CLAUDE
+    };
+  } catch (error) {
+    console.error('Claude API调用失败:', error);
+    throw error;
+  }
 };
 
 // Gemini API调用
@@ -170,54 +271,123 @@ const callGemini = async (
   messages: Message[],
   promptContent: string | null,
   model: LLMModel,
-  config: AIConfig
+  config: AIConfig,
+  streamCallback?: (chunk: string) => void
 ): Promise<AIResponse> => {
   // 构建Gemini消息格式
-  const formattedMessages = messages.map(msg => ({
-    role: msg.role === 'user' ? 'user' : 'model',
-    parts: [{ text: msg.content }]
-  }));
-
-  // 如果有系统提示，添加到第一条消息前
+  let formattedMessages = [];
+  
+  // 添加系统提示
   if (promptContent) {
-    formattedMessages.unshift({
+    formattedMessages.push({
       role: 'user',
-      parts: [{ text: `System: ${promptContent}` }]
+      parts: [{ text: `系统指令: ${promptContent}` }]
+    });
+    formattedMessages.push({
+      role: 'model',
+      parts: [{ text: '我理解并会按照系统指令行动。' }]
+    });
+  }
+  
+  // 添加对话历史
+  for (let i = 0; i < messages.length; i++) {
+    const message = messages[i];
+    formattedMessages.push({
+      role: message.role === 'user' ? 'user' : 'model',
+      parts: [{ text: message.content }]
     });
   }
 
-  const modelId = model.replace('gemini-', '');
-  const response = await fetch(
-    `${config.baseUrl}/models/${modelId}:generateContent?key=${config.apiKey}`,
-    {
+  try {
+    // 如果提供了流回调函数，则使用流式响应
+    const isStream = !!streamCallback;
+    
+    const endpoint = `${config.baseUrl}/models/${model}:generateContent`;
+    const apiKey = config.apiKey;
+    
+    const response = await fetch(`${endpoint}?key=${apiKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        contents: formattedMessages
+        contents: formattedMessages,
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 2048
+        },
+        safetySettings: [
+          {
+            category: 'HARM_CATEGORY_HARASSMENT',
+            threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+          }
+        ],
+        stream: isStream
       })
-    }
-  );
+    });
 
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(`Gemini API错误: ${errorData.error?.message || response.statusText}`);
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`Gemini API错误: ${errorData.error?.message || response.statusText}`);
+    }
+
+    // 处理流式响应
+    if (isStream && streamCallback && response.body) {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let fullContent = '';
+      
+      return new Promise<AIResponse>(async (resolve, reject) => {
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            const chunk = decoder.decode(value);
+            const lines = chunk
+              .split('\n')
+              .filter(line => line.trim() !== '' && line.trim() !== 'data: [DONE]');
+            
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const jsonData = JSON.parse(line.slice(6));
+                  if (jsonData.candidates && 
+                      jsonData.candidates[0]?.content?.parts && 
+                      jsonData.candidates[0].content.parts[0]?.text) {
+                    const content = jsonData.candidates[0].content.parts[0].text;
+                    fullContent += content;
+                    streamCallback(content);
+                  }
+                } catch (e) {
+                  console.warn('解析Gemini流数据时出错:', e);
+                }
+              }
+            }
+          }
+          
+          resolve({
+            content: fullContent,
+            model,
+            provider: AIProvider.GEMINI
+          });
+        } catch (error) {
+          reject(error);
+        }
+      });
+    }
+
+    // 处理非流式响应
+    const data = await response.json();
+    return {
+      content: data.candidates[0].content.parts[0].text,
+      model,
+      provider: AIProvider.GEMINI
+    };
+  } catch (error) {
+    console.error('Gemini API调用失败:', error);
+    throw error;
   }
-
-  const data = await response.json();
-  
-  return {
-    content: data.candidates[0].content.parts[0].text,
-    model,
-    provider: AIProvider.GEMINI,
-    // Gemini目前不提供token使用信息
-    usage: {
-      promptTokens: 0,
-      completionTokens: 0,
-      totalTokens: 0
-    }
-  };
 };
 
 // DeepSeek API调用
@@ -225,7 +395,8 @@ const callDeepSeek = async (
   messages: Message[],
   promptContent: string | null,
   model: LLMModel,
-  config: AIConfig
+  config: AIConfig,
+  streamCallback?: (chunk: string) => void
 ): Promise<AIResponse> => {
   const formattedMessages = [
     ...(promptContent ? [{ role: 'system', content: promptContent }] : []),
@@ -233,6 +404,9 @@ const callDeepSeek = async (
   ];
 
   try {
+    // 如果提供了流回调函数，则使用流式响应
+    const isStream = !!streamCallback;
+    
     const response = await fetch(`${config.baseUrl}/v1/chat/completions`, {
       method: 'POST',
       headers: {
@@ -241,29 +415,69 @@ const callDeepSeek = async (
       },
       body: JSON.stringify({
         model,
-        messages: formattedMessages
+        messages: formattedMessages,
+        stream: isStream
       })
     });
 
     if (!response.ok) {
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('text/html')) {
-        const text = await response.text();
-        throw new Error(`服务器返回了HTML而不是JSON: ${text.substring(0, 100)}...`);
-      }
       const errorData = await response.json();
       throw new Error(`DeepSeek API错误: ${errorData.error?.message || response.statusText}`);
     }
 
+    // 处理流式响应
+    if (isStream && streamCallback && response.body) {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let fullContent = '';
+      
+      return new Promise<AIResponse>(async (resolve, reject) => {
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            const chunk = decoder.decode(value);
+            const lines = chunk
+              .split('\n')
+              .filter(line => line.trim() !== '' && line.trim() !== 'data: [DONE]');
+            
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const jsonData = JSON.parse(line.slice(6));
+                  if (jsonData.choices && jsonData.choices[0]?.delta?.content) {
+                    const content = jsonData.choices[0].delta.content;
+                    fullContent += content;
+                    streamCallback(content);
+                  }
+                } catch (e) {
+                  console.warn('解析DeepSeek流数据时出错:', e);
+                }
+              }
+            }
+          }
+          
+          resolve({
+            content: fullContent,
+            model,
+            provider: AIProvider.DEEPSEEK
+          });
+        } catch (error) {
+          reject(error);
+        }
+      });
+    }
+
+    // 处理非流式响应
     const data = await response.json();
     return {
       content: data.choices[0].message.content,
       model,
-      provider: AIProvider.DEEPSEEK,
-      usage: data.usage
+      provider: AIProvider.DEEPSEEK
     };
   } catch (error) {
-    console.error('API调用详细错误:', error);
+    console.error('DeepSeek API调用失败:', error);
     throw error;
   }
 };
@@ -273,7 +487,8 @@ const callHuoshan = async (
   messages: Message[],
   promptContent: string | null,
   model: LLMModel,
-  config: AIConfig
+  config: AIConfig,
+  streamCallback?: (chunk: string) => void
 ): Promise<AIResponse> => {
   const formattedMessages = [
     ...(promptContent ? [{ role: 'system', content: promptContent }] : []),
@@ -286,6 +501,9 @@ const callHuoshan = async (
     
     console.log('火山API请求URL:', proxyUrl);
     
+    // 如果提供了流回调函数，则使用流式响应
+    const isStream = !!streamCallback;
+    
     const response = await fetch(proxyUrl, {
       method: 'POST',
       headers: {
@@ -294,7 +512,8 @@ const callHuoshan = async (
       },
       body: JSON.stringify({
         model,
-        messages: formattedMessages
+        messages: formattedMessages,
+        stream: isStream
       })
     });
 
@@ -308,25 +527,70 @@ const callHuoshan = async (
       throw new Error(`火山API错误: ${errorData.error?.message || response.statusText}`);
     }
 
+    // 处理流式响应
+    if (isStream && streamCallback && response.body) {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let fullContent = '';
+      
+      return new Promise<AIResponse>(async (resolve, reject) => {
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            const chunk = decoder.decode(value);
+            const lines = chunk
+              .split('\n')
+              .filter(line => line.trim() !== '' && line.trim() !== 'data: [DONE]');
+            
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const jsonData = JSON.parse(line.slice(6));
+                  if (jsonData.choices && jsonData.choices[0]?.delta?.content) {
+                    const content = jsonData.choices[0].delta.content;
+                    fullContent += content;
+                    streamCallback(content);
+                  }
+                } catch (e) {
+                  console.warn('解析火山流数据时出错:', e);
+                }
+              }
+            }
+          }
+          
+          resolve({
+            content: fullContent,
+            model,
+            provider: AIProvider.HUOSHAN
+          });
+        } catch (error) {
+          reject(error);
+        }
+      });
+    }
+
+    // 处理非流式响应
     const data = await response.json();
     return {
       content: data.choices[0].message.content,
       model,
-      provider: AIProvider.HUOSHAN,
-      usage: data.usage
+      provider: AIProvider.HUOSHAN
     };
   } catch (error) {
-    console.error('火山API调用详细错误:', error);
+    console.error('火山API调用失败:', error);
     throw error;
   }
 };
 
-// 通义千问API调用
+// 千问API调用
 const callQwen = async (
   messages: Message[],
   promptContent: string | null,
   model: LLMModel,
-  config: AIConfig
+  config: AIConfig,
+  streamCallback?: (chunk: string) => void
 ): Promise<AIResponse> => {
   const formattedMessages = [
     ...(promptContent ? [{ role: 'system', content: promptContent }] : []),
@@ -334,6 +598,9 @@ const callQwen = async (
   ];
 
   try {
+    // 如果提供了流回调函数，则使用流式响应
+    const isStream = !!streamCallback;
+    
     const response = await fetch(`${config.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -342,24 +609,69 @@ const callQwen = async (
       },
       body: JSON.stringify({
         model,
-        messages: formattedMessages
+        messages: formattedMessages,
+        stream: isStream
       })
     });
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(`通义千问API错误: ${errorData.error?.message || response.statusText}`);
+      throw new Error(`千问API错误: ${errorData.error?.message || response.statusText}`);
     }
 
+    // 处理流式响应
+    if (isStream && streamCallback && response.body) {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let fullContent = '';
+      
+      return new Promise<AIResponse>(async (resolve, reject) => {
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            const chunk = decoder.decode(value);
+            const lines = chunk
+              .split('\n')
+              .filter(line => line.trim() !== '' && line.trim() !== 'data: [DONE]');
+            
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const jsonData = JSON.parse(line.slice(6));
+                  if (jsonData.choices && jsonData.choices[0]?.delta?.content) {
+                    const content = jsonData.choices[0].delta.content;
+                    fullContent += content;
+                    streamCallback(content);
+                  }
+                } catch (e) {
+                  console.warn('解析千问流数据时出错:', e);
+                }
+              }
+            }
+          }
+          
+          resolve({
+            content: fullContent,
+            model,
+            provider: AIProvider.QWEN
+          });
+        } catch (error) {
+          reject(error);
+        }
+      });
+    }
+
+    // 处理非流式响应
     const data = await response.json();
     return {
       content: data.choices[0].message.content,
       model,
-      provider: AIProvider.QWEN,
-      usage: data.usage
+      provider: AIProvider.QWEN
     };
   } catch (error) {
-    console.error('通义千问API调用错误:', error);
+    console.error('千问API调用失败:', error);
     throw error;
   }
 };
@@ -369,46 +681,64 @@ export const sendMessageToAI = async (
   messages: Message[],
   promptContent: string | null,
   promptType: PromptType,
-  model: LLMModel = LLMModel.GPT35
+  model: LLMModel = LLMModel.GPT35,
+  useGlobalSettings: boolean = false,
+  globalSettings?: {
+    defaultModel?: LLMModel,
+    globalPrompt?: string,
+    useGlobalPrompt?: boolean,
+    globalPromptType?: PromptType
+  },
+  streamCallback?: (chunk: string) => void
 ): Promise<AIResponse> => {
+  // 如果使用全局设置，并且提供了全局设置
+  let finalModel = model;
+  let finalPromptContent = promptContent;
+  let finalPromptType = promptType;
+
+  if (useGlobalSettings && globalSettings) {
+    // 只有当没有指定模型时（model为默认值），才使用全局默认模型
+    if (model === LLMModel.GPT35 && globalSettings.defaultModel) {
+      finalModel = globalSettings.defaultModel;
+    }
+
+    // 处理全局Prompt
+    if (globalSettings.useGlobalPrompt && globalSettings.globalPrompt) {
+      if (finalPromptContent && globalSettings.globalPromptType === PromptType.SYSTEM) {
+        // 如果已有prompt且全局prompt是system类型，则组合两者
+        finalPromptContent = `${globalSettings.globalPrompt}\n\n${finalPromptContent}`;
+      } else if (!finalPromptContent) {
+        // 如果没有prompt，直接使用全局prompt
+        finalPromptContent = globalSettings.globalPrompt;
+        finalPromptType = globalSettings.globalPromptType || PromptType.SYSTEM;
+      }
+    }
+  }
+
   try {
-    const provider = getProviderFromModel(model);
+    // 确定AI提供商
+    const provider = getProviderFromModel(finalModel);
     const config = getAIConfig(provider);
-    
-    // 检查API密钥是否配置
-    if (!config.apiKey) {
-      throw new Error(`未配置${provider}的API密钥，请在.env文件中设置`);
-    }
-    
-    // 如果是直接发送类型的提示，不需要用户输入
-    if (promptContent && promptType === PromptType.DIRECT) {
-      messages = [{
-        id: Date.now().toString(),
-        role: 'user',
-        content: promptContent,
-        timestamp: Date.now()
-      }];
-    }
-    
+
     // 根据提供商调用相应的API
     switch (provider) {
       case AIProvider.OPENAI:
-        return await callOpenAI(messages, promptContent, model, config);
+        return await callOpenAI(messages, finalPromptContent, finalModel, config, streamCallback);
       case AIProvider.CLAUDE:
-        return await callClaude(messages, promptContent, model, config);
+        return await callClaude(messages, finalPromptContent, finalModel, config, streamCallback);
       case AIProvider.GEMINI:
-        return await callGemini(messages, promptContent, model, config);
+        return await callGemini(messages, finalPromptContent, finalModel, config, streamCallback);
       case AIProvider.DEEPSEEK:
-        return await callDeepSeek(messages, promptContent, model, config);
+        return await callDeepSeek(messages, finalPromptContent, finalModel, config, streamCallback);
       case AIProvider.HUOSHAN:
-        return await callHuoshan(messages, promptContent, model, config);
+        return await callHuoshan(messages, finalPromptContent, finalModel, config, streamCallback);
       case AIProvider.QWEN:
-        return await callQwen(messages, promptContent, model, config);
+        return await callQwen(messages, finalPromptContent, finalModel, config, streamCallback);
       default:
         throw new Error(`不支持的AI提供商: ${provider}`);
     }
   } catch (error) {
-    console.error('AI API调用失败:', error);
+    console.error('发送消息到AI时出错:', error);
     throw error;
   }
 };

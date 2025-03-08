@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Avatar, Typography, Space } from 'antd';
 import { UserOutlined, RobotOutlined } from '@ant-design/icons';
 import { Message as MessageType } from '../../types';
 import ReactMarkdown from 'react-markdown';
+import { useChatContext } from '../../contexts/ChatContext';
 
 const { Text } = Typography;
 
@@ -12,6 +13,24 @@ interface MessageProps {
 
 const Message: React.FC<MessageProps> = ({ message }) => {
   const isUser = message.role === 'user';
+  const { isStreaming, streamingMessageId } = useChatContext();
+  const messageRef = useRef<HTMLDivElement>(null);
+  
+  // 检查当前消息是否正在流式输出
+  const isCurrentlyStreaming = isStreaming && streamingMessageId === message.id;
+  
+  // 当消息内容更新时，应用高亮动画
+  useEffect(() => {
+    if (isCurrentlyStreaming && messageRef.current) {
+      messageRef.current.classList.add('message-highlight');
+      
+      const timer = setTimeout(() => {
+        messageRef.current?.classList.remove('message-highlight');
+      }, 300);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [message.content, isCurrentlyStreaming]);
   
   return (
     <div 
@@ -30,16 +49,22 @@ const Message: React.FC<MessageProps> = ({ message }) => {
         }}
       />
       <div
+        ref={messageRef}
+        className={`message-bubble ${isCurrentlyStreaming ? 'streaming-message' : ''}`}
         style={{
           maxWidth: '70%',
           backgroundColor: isUser ? '#e6f7ff' : '#f6ffed',
           padding: '8px 12px',
           borderRadius: 8,
-          position: 'relative'
+          position: 'relative',
+          transition: 'background-color 0.3s ease'
         }}
       >
         <div style={{ margin: 0 }}>
           <ReactMarkdown>{message.content}</ReactMarkdown>
+          {isCurrentlyStreaming && (
+            <span className="typing-indicator">▋</span>
+          )}
         </div>
         <Text type="secondary" style={{ fontSize: 12 }}>
           {new Date(message.timestamp).toLocaleTimeString()}

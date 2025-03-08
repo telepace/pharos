@@ -5,7 +5,7 @@ import Message from './Message';
 import MessageInput from './MessageInput';
 
 const ChatWindow: React.FC = () => {
-  const { messages, isLoading } = useChatContext();
+  const { messages, isLoading, isStreaming } = useChatContext();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   // 自动滚动到底部
@@ -16,6 +16,14 @@ const ChatWindow: React.FC = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+  
+  // 当有新的流式内容时也滚动到底部
+  useEffect(() => {
+    if (isStreaming) {
+      const scrollInterval = setInterval(scrollToBottom, 300);
+      return () => clearInterval(scrollInterval);
+    }
+  }, [isStreaming]);
   
   return (
     <Card 
@@ -49,7 +57,7 @@ const ChatWindow: React.FC = () => {
             <Message key={message.id} message={message} />
           ))
         )}
-        {isLoading && (
+        {isLoading && !isStreaming && (
           <div style={{ textAlign: 'center', padding: '16px' }}>
             <Spin tip="AI正在思考..." />
           </div>
