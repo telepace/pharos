@@ -18,17 +18,17 @@ jobs:
       - name: 设置 Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '16'
           cache: 'npm'
           
       - name: 安装依赖
-        run: npm ci
-        
+        run: make install
+
       - name: 运行测试
-        run: npm test
-        
+        run: make start
+
       - name: 运行代码检查
-        run: npm run lint
+        run: make lint
         
       - name: 构建检查
-        run: npm run build
+        run: make build
