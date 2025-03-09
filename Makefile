@@ -82,7 +82,7 @@ test:
 .PHONY: lint
 lint:
 	@echo "===========> Running linter"
-	@npm run lint
+	@npm link
 
 ## 构建 Docker 镜像
 .PHONY: docker-build
