@@ -1,8 +1,16 @@
 import React, { useState } from 'react';
-import { Input, Button, Space, Tag } from 'antd';
-import { SendOutlined, ClearOutlined } from '@ant-design/icons';
+import { Input, Button, Space, Tag, Tooltip, Drawer } from 'antd';
+import { 
+  SendOutlined, 
+  ClearOutlined, 
+  SearchOutlined, 
+  AudioOutlined,
+  LinkOutlined
+} from '@ant-design/icons';
 import { useChatContext } from '../../contexts/ChatContext';
 import { usePromptContext } from '../../contexts/PromptContext';
+import VoiceInput from './VoiceInput';
+import WebSearch from './WebSearch';
 
 const { TextArea } = Input;
 
@@ -10,6 +18,7 @@ const MessageInput: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
   const { sendMessage, clearMessages, isLoading, isStreaming } = useChatContext();
   const { getActivePrompt } = usePromptContext();
+  const [searchDrawerVisible, setSearchDrawerVisible] = useState(false);
   
   const activePrompt = getActivePrompt();
   const isDisabled = isLoading || isStreaming;
@@ -28,6 +37,25 @@ const MessageInput: React.FC = () => {
     }
   };
   
+  const handleVoiceTranscript = (text: string) => {
+    setInputValue(prev => prev + (prev ? ' ' : '') + text);
+  };
+  
+  const handleSearchComplete = (query: string, results: Array<{ title: string; url: string; snippet: string }>) => {
+    // 构建搜索结果摘要
+    const searchSummary = `
+我搜索了"${query}"，以下是结果：
+
+${results.slice(0, 3).map((result, index) => `${index + 1}. ${result.title}
+   ${result.snippet}
+   链接: ${result.url}
+`).join('\n')}
+    `.trim();
+    
+    setInputValue(prev => prev + (prev ? '\n\n' : '') + searchSummary);
+    setSearchDrawerVisible(false);
+  };
+  
   return (
     <div style={{ padding: '12px 16px', borderTop: '1px solid #f0f0f0' }}>
       {activePrompt && (
@@ -37,13 +65,30 @@ const MessageInput: React.FC = () => {
           </Tag>
         </div>
       )}
+      
+      <div style={{ display: 'flex', marginBottom: 8 }}>
+        <Tooltip title="网络搜索">
+          <Button 
+            icon={<SearchOutlined />} 
+            onClick={() => setSearchDrawerVisible(true)}
+            style={{ marginRight: 8 }}
+            disabled={isDisabled}
+          />
+        </Tooltip>
+        
+        <VoiceInput 
+          onTranscript={handleVoiceTranscript}
+          disabled={isDisabled}
+        />
+      </div>
+      
       <Space.Compact style={{ width: '100%' }}>
         <TextArea
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={isStreaming ? "AI正在回复中..." : "输入消息..."}
-          autoSize={{ minRows: 1, maxRows: 4 }}
+          autoSize={{ minRows: 1, maxRows: 6 }}
           style={{ borderRadius: '4px 0 0 4px' }}
           disabled={isDisabled}
         />
@@ -58,6 +103,7 @@ const MessageInput: React.FC = () => {
           {isStreaming ? "生成中" : "发送"}
         </Button>
       </Space.Compact>
+      
       <div style={{ marginTop: 8, textAlign: 'right' }}>
         <Button 
           type="text" 
@@ -69,6 +115,17 @@ const MessageInput: React.FC = () => {
           清空对话
         </Button>
       </div>
+      
+      {/* 网络搜索抽屉 */}
+      <Drawer
+        title="网络搜索"
+        placement="right"
+        onClose={() => setSearchDrawerVisible(false)}
+        open={searchDrawerVisible}
+        width={320}
+      >
+        <WebSearch onSearchComplete={handleSearchComplete} />
+      </Drawer>
     </div>
   );
 };
