@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Card, Spin, Empty } from 'antd';
 import { useChatContext } from '../../contexts/ChatContext';
 import Message from './Message';
@@ -7,23 +7,44 @@ import MessageInput from './MessageInput';
 const ChatWindow: React.FC = () => {
   const { messages, isLoading, isStreaming, observationIds } = useChatContext();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const prevMessagesLengthRef = useRef(messages.length);
+  const hasScrolledDuringStreamRef = useRef(false);
   
   // 自动滚动到底部
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
-  
+
+  // 只在消息数量增加时滚动到底部（新消息发送时）
   useEffect(() => {
-    scrollToBottom();
+    if (messages.length > prevMessagesLengthRef.current) {
+      scrollToBottom();
+    }
+    prevMessagesLengthRef.current = messages.length;
   }, [messages]);
   
-  // 当有新的流式内容时也滚动到底部
+  // 处理流式输出时的滚动逻辑
   useEffect(() => {
-    if (isStreaming) {
-      const scrollInterval = setInterval(scrollToBottom, 300);
-      return () => clearInterval(scrollInterval);
+    // 当流式输出开始时，重置滚动标记
+    if (isStreaming && !hasScrolledDuringStreamRef.current) {
+      // 检查最后一条消息是否至少有3行
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage && lastMessage.role === 'assistant') {
+        const lineCount = (lastMessage.content.match(/\n/g) || []).length + 1;
+        
+        // 当达到至少3行且尚未滚动过时，执行一次滚动
+        if (lineCount >= 3 && !hasScrolledDuringStreamRef.current) {
+          scrollToBottom();
+          hasScrolledDuringStreamRef.current = true;
+        }
+      }
     }
-  }, [isStreaming]);
+    
+    // 流式输出结束时，重置标记
+    if (!isStreaming) {
+      hasScrolledDuringStreamRef.current = false;
+    }
+  }, [isStreaming, messages]);
   
   return (
     <Card 
@@ -73,4 +94,4 @@ const ChatWindow: React.FC = () => {
   );
 };
 
-export default ChatWindow; 
+export default ChatWindow;

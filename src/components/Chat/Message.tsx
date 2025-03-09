@@ -65,7 +65,7 @@ const Message: React.FC<MessageProps> = ({ message, observationId }) => {
         <div style={{ margin: 0 }}>
           <ReactMarkdown>{message.content}</ReactMarkdown>
           {isCurrentlyStreaming && (
-            <span className="typing-indicator">▋</span>
+            <span className="typing-cursor"></span>
           )}
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
