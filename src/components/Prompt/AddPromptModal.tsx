@@ -123,7 +123,7 @@ const AddPromptModal: React.FC<AddPromptModalProps> = ({
               系统提示（需要用户输入）
             </Radio>
             <Radio value={PromptType.DIRECT}>
-              直接发送（无需用户输入）
+              直接发送（点击选项→直接将prompt内容作为用户query发送入聊天窗口）
             </Radio>
           </Radio.Group>
         </Form.Item>

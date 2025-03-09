@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { Card, Typography, Space, Button, Modal, Tooltip, Tag } from 'antd';
-import { EditOutlined, DeleteOutlined, CheckCircleOutlined, DisconnectOutlined } from '@ant-design/icons';
+import { Card, Typography, Space, Button, Modal, Tooltip, Tag, Menu, Dropdown } from 'antd';
+import { EditOutlined, DeleteOutlined, CheckCircleOutlined, DisconnectOutlined, SendOutlined, MoreOutlined } from '@ant-design/icons';
 import { Prompt, PromptType } from '../../types';
 import { usePromptContext } from '../../contexts/PromptContext';
+import { useChatContext } from '../../contexts/ChatContext';
 import AddPromptModal from './AddPromptModal';
+import type { MenuProps } from 'antd';
 
 const { Text, Paragraph } = Typography;
 
@@ -13,6 +15,7 @@ interface PromptItemProps {
 
 const PromptItem: React.FC<PromptItemProps> = ({ prompt }) => {
   const { activePromptId, setActivePrompt, deletePrompt, removePromptFromScene } = usePromptContext();
+  const { sendMessage } = useChatContext();
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
   const [isRemoveModalVisible, setIsRemoveModalVisible] = useState(false);
@@ -37,6 +40,11 @@ const PromptItem: React.FC<PromptItemProps> = ({ prompt }) => {
     e.stopPropagation();
     setIsRemoveModalVisible(true);
   };
+
+  const handleSendDirectly = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    sendMessage(prompt.content);
+  };
   
   const confirmDelete = () => {
     deletePrompt(prompt.id);
@@ -57,6 +65,32 @@ const PromptItem: React.FC<PromptItemProps> = ({ prompt }) => {
   const getTypeTagText = () => {
     return prompt.type === PromptType.DIRECT ? '直接发送' : '系统提示';
   };
+
+  // 处理菜单点击
+  const handleMenuClick: MenuProps['onClick'] = ({ key }) => {
+    if (key === 'send') {
+      sendMessage(prompt.content);
+    } else if (key === 'edit') {
+      setIsEditModalVisible(true);
+    } else if (key === 'delete') {
+      setIsDeleteModalVisible(true);
+    }
+  };
+
+  // 下拉菜单选项
+  const menu = (
+    <Menu onClick={handleMenuClick}>
+      <Menu.Item key="send" icon={<SendOutlined />}>
+        直接发送
+      </Menu.Item>
+      <Menu.Item key="edit" icon={<EditOutlined />}>
+        编辑
+      </Menu.Item>
+      <Menu.Item key="delete" icon={<DeleteOutlined />} danger>
+        删除
+      </Menu.Item>
+    </Menu>
+  );
   
   return (
     <>
@@ -91,33 +125,22 @@ const PromptItem: React.FC<PromptItemProps> = ({ prompt }) => {
             <Text type="secondary" style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>模型: {prompt.model}</Text>
           </div>
           <Space style={{ flexShrink: 0 }}>
-            <Tooltip title="编辑">
+            <Tooltip title="直接发送">
               <Button 
                 type="text" 
-                icon={<EditOutlined />} 
+                icon={<SendOutlined />} 
                 size="small" 
-                onClick={handleEdit}
+                onClick={handleSendDirectly}
               />
             </Tooltip>
-            {/* 暂时注释掉"从场景中移除"按钮
-            <Tooltip title="从场景中移除">
+            <Dropdown overlay={menu} trigger={['click']} placement="bottomRight">
               <Button 
                 type="text" 
-                icon={<DisconnectOutlined />} 
+                icon={<MoreOutlined />} 
                 size="small" 
-                onClick={handleRemove}
+                onClick={(e) => e.stopPropagation()}
               />
-            </Tooltip>
-            */}
-            <Tooltip title="删除">
-              <Button 
-                type="text" 
-                icon={<DeleteOutlined />} 
-                size="small" 
-                danger
-                onClick={handleDelete}
-              />
-            </Tooltip>
+            </Dropdown>
           </Space>
         </div>
       </Card>
