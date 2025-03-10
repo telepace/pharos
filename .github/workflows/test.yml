@@ -31,4 +31,4 @@ jobs:
         run: make lint
         
       - name: 构建检查
-        run: restart-daemon
+        run: make restart-daemon
