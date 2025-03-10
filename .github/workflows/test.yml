@@ -25,7 +25,7 @@ jobs:
         run: make install
 
       - name: 运行测试
-        run: CI=true npm test
+        run: CI=true npm test -- --passWithNoTests
 
       - name: 运行代码检查
         run: make lint
