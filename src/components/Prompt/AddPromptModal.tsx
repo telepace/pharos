@@ -188,12 +188,20 @@ const AddPromptModal: React.FC<AddPromptModalProps> = ({
               {renderModelOption(LLMModel.HUOSHAN_DEEPSEEK_V3)}
             </Select.OptGroup>
 
-            {/* 通义千问模型 */}
+            {/* 通义千问 */}
             <Select.OptGroup label="通义千问">
               {renderModelOption(LLMModel.QWEN_PLUS)}
               {renderModelOption(LLMModel.QWEN_PLUS_LATEST)}
               {renderModelOption(LLMModel.QWEN_MAX)}
               {renderModelOption(LLMModel.QWQ_PLUS)}
+            </Select.OptGroup>
+            
+            {/* OpenRouter模型 */}
+            <Select.OptGroup label="OpenRouter">
+              {renderModelOption(LLMModel.OPENROUTER_GEMINI_FLASH)}
+              {renderModelOption(LLMModel.OPENROUTER_CLAUDE_OPUS)}
+              {renderModelOption(LLMModel.OPENROUTER_LLAMA)}
+              {renderModelOption(LLMModel.OPENROUTER_MIXTRAL)}
             </Select.OptGroup>
 
             {/* 其他模型 */}

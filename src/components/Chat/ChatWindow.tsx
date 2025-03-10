@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Card, Spin, Empty } from 'antd';
 import { useChatContext } from '../../contexts/ChatContext';
 import Message from './Message';
