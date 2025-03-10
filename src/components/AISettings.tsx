@@ -37,6 +37,24 @@ const AISettings: React.FC<AISettingsProps> = ({ onSave }) => {
     apiKey: process.env.REACT_APP_DEEPSEEK_API_KEY || '',
     baseUrl: process.env.REACT_APP_DEEPSEEK_BASE_URL || 'https://api.deepseek.com'
   });
+  
+  const [huoshanSettings, setHuoshanSettings] = useState({
+    apiKey: process.env.REACT_APP_HUOSHAN_API_KEY || '',
+    baseUrl: process.env.REACT_APP_HUOSHAN_BASE_URL || 'https://api.deepseek.com'
+  });
+  
+  const [qwenSettings, setQwenSettings] = useState({
+    apiKey: process.env.REACT_APP_QWEN_API_KEY || '',
+    baseUrl: process.env.REACT_APP_QWEN_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1'
+  });
+  
+  const [openrouterSettings, setOpenrouterSettings] = useState({
+    apiKey: process.env.REACT_APP_OPENROUTER_API_KEY || '',
+    baseUrl: process.env.REACT_APP_OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1',
+    siteUrl: process.env.REACT_APP_OPENROUTER_SITE_URL || '',
+    siteName: process.env.REACT_APP_OPENROUTER_SITE_NAME || '',
+    models: process.env.REACT_APP_OPENROUTER_MODELS || ''
+  });
 
   const handleSave = async () => {
     setLoading(true);
@@ -55,6 +73,21 @@ const AISettings: React.FC<AISettingsProps> = ({ onSave }) => {
           break;
         case AIProvider.DEEPSEEK:
           settings = { provider: AIProvider.DEEPSEEK, ...deepseekSettings };
+          break;
+        case AIProvider.HUOSHAN:
+          settings = { provider: AIProvider.HUOSHAN, ...huoshanSettings };
+          break;
+        case AIProvider.QWEN:
+          settings = { provider: AIProvider.QWEN, ...qwenSettings };
+          break;
+        case AIProvider.OPENROUTER:
+          settings = { provider: AIProvider.OPENROUTER, 
+                       apiKey: openrouterSettings.apiKey, 
+                       baseUrl: openrouterSettings.baseUrl };
+          // 保存附加设置到localStorage或其他持久化存储
+          localStorage.setItem('openrouter_site_url', openrouterSettings.siteUrl);
+          localStorage.setItem('openrouter_site_name', openrouterSettings.siteName);
+          localStorage.setItem('openrouter_models', openrouterSettings.models);
           break;
         default:
           throw new Error(`不支持的AI提供商: ${activeProvider}`);
@@ -201,6 +234,112 @@ const AISettings: React.FC<AISettingsProps> = ({ onSave }) => {
               <Select disabled style={{ width: '100%' }} mode="multiple" defaultValue={[LLMModel.DEEPSEEK_REASONER, LLMModel.DEEPSEEK_CHAT]}>
                 <Option value={LLMModel.DEEPSEEK_REASONER}>DeepSeek Reasoner</Option>
                 <Option value={LLMModel.DEEPSEEK_CHAT}>DeepSeek Chat</Option>
+              </Select>
+            </Form.Item>
+          </Form>
+        </TabPane>
+        
+        <TabPane tab="Huoshan" key={AIProvider.HUOSHAN}>
+          <Form layout="vertical">
+            <Form.Item label="API密钥">
+              <Input.Password
+                value={huoshanSettings.apiKey}
+                onChange={(e) => setHuoshanSettings({ ...huoshanSettings, apiKey: e.target.value })}
+                placeholder="输入Huoshan API密钥"
+              />
+            </Form.Item>
+            <Form.Item label="基础URL">
+              <Input
+                value={huoshanSettings.baseUrl}
+                onChange={(e) => setHuoshanSettings({ ...huoshanSettings, baseUrl: e.target.value })}
+                placeholder="https://api.deepseek.com"
+              />
+            </Form.Item>
+            <Form.Item label="可用模型">
+              <Select disabled style={{ width: '100%' }} mode="multiple" 
+                      defaultValue={[LLMModel.HUOSHAN_DEEPSEEK_R1, LLMModel.HUOSHAN_DEEPSEEK_V3]}>
+                <Option value={LLMModel.HUOSHAN_DEEPSEEK_R1}>DeepSeek R1</Option>
+                <Option value={LLMModel.HUOSHAN_DEEPSEEK_R1_QWEN_32B}>DeepSeek R1 Qwen 32B</Option>
+                <Option value={LLMModel.HUOSHAN_DEEPSEEK_R1_QWEN_7B}>DeepSeek R1 Qwen 7B</Option>
+                <Option value={LLMModel.HUOSHAN_DEEPSEEK_V3}>DeepSeek V3</Option>
+              </Select>
+            </Form.Item>
+          </Form>
+        </TabPane>
+        
+        <TabPane tab="Qwen" key={AIProvider.QWEN}>
+          <Form layout="vertical">
+            <Form.Item label="API密钥">
+              <Input.Password
+                value={qwenSettings.apiKey}
+                onChange={(e) => setQwenSettings({ ...qwenSettings, apiKey: e.target.value })}
+                placeholder="输入Qwen API密钥"
+              />
+            </Form.Item>
+            <Form.Item label="基础URL">
+              <Input
+                value={qwenSettings.baseUrl}
+                onChange={(e) => setQwenSettings({ ...qwenSettings, baseUrl: e.target.value })}
+                placeholder="https://dashscope.aliyuncs.com/compatible-mode/v1"
+              />
+            </Form.Item>
+            <Form.Item label="可用模型">
+              <Select disabled style={{ width: '100%' }} mode="multiple" 
+                      defaultValue={[LLMModel.QWEN_PLUS, LLMModel.QWEN_MAX]}>
+                <Option value={LLMModel.QWEN_PLUS}>Qwen Plus</Option>
+                <Option value={LLMModel.QWEN_PLUS_LATEST}>Qwen Plus Latest</Option>
+                <Option value={LLMModel.QWEN_MAX}>Qwen Max</Option>
+                <Option value={LLMModel.QWQ_PLUS}>QWQ Plus</Option>
+              </Select>
+            </Form.Item>
+          </Form>
+        </TabPane>
+        
+        <TabPane tab="OpenRouter" key={AIProvider.OPENROUTER}>
+          <Form layout="vertical">
+            <Form.Item label="API密钥">
+              <Input.Password
+                value={openrouterSettings.apiKey}
+                onChange={(e) => setOpenrouterSettings({ ...openrouterSettings, apiKey: e.target.value })}
+                placeholder="输入OpenRouter API密钥"
+              />
+            </Form.Item>
+            <Form.Item label="基础URL">
+              <Input
+                value={openrouterSettings.baseUrl}
+                onChange={(e) => setOpenrouterSettings({ ...openrouterSettings, baseUrl: e.target.value })}
+                placeholder="https://openrouter.ai/api/v1"
+              />
+            </Form.Item>
+            <Form.Item label="站点URL (可选)">
+              <Input
+                value={openrouterSettings.siteUrl}
+                onChange={(e) => setOpenrouterSettings({ ...openrouterSettings, siteUrl: e.target.value })}
+                placeholder="您的网站URL，用于OpenRouter排名"
+              />
+            </Form.Item>
+            <Form.Item label="站点名称 (可选)">
+              <Input
+                value={openrouterSettings.siteName}
+                onChange={(e) => setOpenrouterSettings({ ...openrouterSettings, siteName: e.target.value })}
+                placeholder="您的网站名称，用于OpenRouter排名"
+              />
+            </Form.Item>
+            <Form.Item label="额外模型 (以逗号分隔)">
+              <Input
+                value={openrouterSettings.models}
+                onChange={(e) => setOpenrouterSettings({ ...openrouterSettings, models: e.target.value })}
+                placeholder="例如: anthropic/claude-3-haiku,meta-llama/llama-3-8b-instruct"
+              />
+            </Form.Item>
+            <Form.Item label="内置模型">
+              <Select disabled style={{ width: '100%' }} mode="multiple" 
+                      defaultValue={[LLMModel.OPENROUTER_GEMINI_FLASH, LLMModel.OPENROUTER_CLAUDE_OPUS, 
+                                    LLMModel.OPENROUTER_LLAMA, LLMModel.OPENROUTER_MIXTRAL]}>
+                <Option value={LLMModel.OPENROUTER_GEMINI_FLASH}>Google Gemini 2.0 Flash</Option>
+                <Option value={LLMModel.OPENROUTER_CLAUDE_OPUS}>Anthropic Claude 3 Opus</Option>
+                <Option value={LLMModel.OPENROUTER_LLAMA}>Meta Llama 3 70B</Option>
+                <Option value={LLMModel.OPENROUTER_MIXTRAL}>Mistral Mixtral 8x7B</Option>
               </Select>
             </Form.Item>
           </Form>

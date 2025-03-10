@@ -56,7 +56,11 @@ export enum LLMModel {
   QWEN_PLUS = 'qwen-plus',
   QWEN_PLUS_LATEST = 'qwen-plus-latest',
   QWEN_MAX = 'qwen-max',
-  QWQ_PLUS = 'qwq-32b'
+  QWQ_PLUS = 'qwq-32b',
+  OPENROUTER_GEMINI_FLASH = 'google/gemini-2.0-flash-lite-001',
+  OPENROUTER_CLAUDE_OPUS = 'anthropic/claude-3-opus',
+  OPENROUTER_LLAMA = 'meta-llama/llama-3-70b-instruct',
+  OPENROUTER_MIXTRAL = 'mistralai/mixtral-8x7b-instruct'
 }
 
 export enum AIProvider {
@@ -65,7 +69,8 @@ export enum AIProvider {
   GEMINI = 'gemini',
   DEEPSEEK = 'deepseek',
   HUOSHAN = 'huoshan',
-  QWEN = 'qwen'
+  QWEN = 'qwen',
+  OPENROUTER = 'openrouter'
 }
 
 export interface AIConfig {

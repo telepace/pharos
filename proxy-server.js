@@ -43,12 +43,17 @@ app.use('/api/huoshan', createProxyMiddleware({
     '^/api/huoshan': ''
   },
   onProxyReq: (proxyReq, req, res) => {
-    // 转发原始请求头
+    // 添加详细的请求日志
+    console.log('发送火山API请求:', {
+      method: req.method,
+      path: req.path,
+      body: req.body
+    });
+
     if (req.headers.authorization) {
       proxyReq.setHeader('Authorization', req.headers.authorization);
     }
     
-    // 如果请求体已被解析，需要重新写入到代理请求中
     if (req.body && Object.keys(req.body).length > 0) {
       const bodyData = JSON.stringify(req.body);
       proxyReq.setHeader('Content-Type', 'application/json');
@@ -56,27 +61,65 @@ app.use('/api/huoshan', createProxyMiddleware({
       proxyReq.write(bodyData);
     }
   },
-  // 支持流式响应
-  selfHandleResponse: false,
-  // 确保流式响应能够正确传递
   onProxyRes: (proxyRes, req, res) => {
-    // 如果是流式响应，确保正确设置响应头
+    // 添加详细的响应处理
+    let responseBody = '';
+    
+    proxyRes.on('data', function(chunk) {
+      responseBody += chunk;
+    });
+    
+    proxyRes.on('end', function() {
+      try {
+        // 尝试解析响应
+        const parsedBody = JSON.parse(responseBody);
+        console.log('火山API响应:', parsedBody);
+      } catch (error) {
+        console.error('火山API响应解析失败:', {
+          statusCode: proxyRes.statusCode,
+          headers: proxyRes.headers,
+          rawBody: responseBody,
+          error: error.message,
+          requestDetails: {
+            method: req.method,
+            path: req.path,
+            headers: req.headers,
+            body: req.body
+          }
+        });
+        
+        // 如果是非JSON响应，尝试直接返回原始响应
+        if (proxyRes.headers['content-type'] && !proxyRes.headers['content-type'].includes('application/json')) {
+          console.log('收到非JSON响应，content-type:', proxyRes.headers['content-type']);
+        }
+      }
+    });
+
     if (req.body && req.body.stream === true) {
       proxyRes.headers['Cache-Control'] = 'no-cache';
       proxyRes.headers['Connection'] = 'keep-alive';
       proxyRes.headers['Content-Type'] = 'text/event-stream';
     }
   },
-  // 处理代理错误
   onError: (err, req, res) => {
-    console.error('代理请求错误:', err);
+    console.error('火山API代理错误:', {
+      error: err.message,
+      stack: err.stack,
+      request: {
+        method: req.method,
+        path: req.path,
+        body: req.body
+      }
+    });
+    
     res.writeHead(500, {
       'Content-Type': 'application/json'
     });
     res.end(JSON.stringify({
       error: {
-        message: `代理请求错误: ${err.message}`,
-        code: 'PROXY_ERROR'
+        message: `火山API请求失败: ${err.message}`,
+        code: 'HUOSHAN_API_ERROR',
+        details: err.stack
       }
     }));
   }
