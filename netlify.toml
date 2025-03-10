@@ -1,0 +1,48 @@
+# Netlify configuration file
+
+[build]
+  # Directory to change to before starting a build
+  base = "/"
+  
+  # Directory that contains the deploy-ready HTML files and assets
+  publish = "build"
+  
+  # Default build command
+  command = "npm run build"
+
+# Production context: all deploys from the Production branch set in your site's
+# deploy contexts will inherit these settings.
+[context.production]
+  # Environment variables for production
+  environment = { NODE_VERSION = "16" }
+
+# Deploy Preview context: all deploys generated from a pull/merge request will
+# inherit these settings.
+[context.deploy-preview]
+  # Environment variables for deploy previews
+  environment = { NODE_VERSION = "16" }
+
+# Branch Deploy context: all deploys that are not from a pull/merge request or
+# from the Production branch will inherit these settings.
+[context.branch-deploy]
+  # Environment variables for branch deploys
+  environment = { NODE_VERSION = "16" }
+
+# Specific branch context: all deploys from this specific branch will inherit
+# these settings.
+[context.develop]
+  # Environment variables for the develop branch
+  environment = { NODE_VERSION = "16" }
+
+# Redirects and rewrites
+[[redirects]]
+  # Redirect API requests to the appropriate backend services
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+
+# For single page applications
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

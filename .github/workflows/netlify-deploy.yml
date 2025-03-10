@@ -1,0 +1,52 @@
+name: Deploy to Netlify
+
+on:
+  push:
+    branches:
+      - main  # 或者你的主分支名称，如 master
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build project
+        run: npm run build
+        env:
+          # 设置默认环境变量，实际API密钥应在Netlify环境变量中配置
+          REACT_APP_OPENAI_BASE_URL: ${{ secrets.REACT_APP_OPENAI_BASE_URL }}
+          REACT_APP_CLAUDE_BASE_URL: ${{ secrets.REACT_APP_CLAUDE_BASE_URL }}
+          REACT_APP_GEMINI_BASE_URL: ${{ secrets.REACT_APP_GEMINI_BASE_URL }}
+          REACT_APP_HUOSHAN_BASE_URL: ${{ secrets.REACT_APP_HUOSHAN_BASE_URL }}
+          REACT_APP_DEEPSEEK_BASE_URL: ${{ secrets.REACT_APP_DEEPSEEK_BASE_URL }}
+          REACT_APP_QWEN_BASE_URL: ${{ secrets.REACT_APP_QWEN_BASE_URL }}
+          REACT_APP_OPENROUTER_BASE_URL: ${{ secrets.REACT_APP_OPENROUTER_BASE_URL }}
+          REACT_APP_LANGFUSE_HOST: ${{ secrets.REACT_APP_LANGFUSE_HOST }}
+
+      - name: Deploy to Netlify
+        uses: nwtgck/actions-netlify@v2.0
+        with:
+          publish-dir: './build'
+          production-branch: main  # 或者你的主分支名称
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: "Deploy from GitHub Actions"
+          enable-pull-request-comment: true
+          enable-commit-comment: true
+          overwrites-pull-request-comment: true
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        timeout-minutes: 5
