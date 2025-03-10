@@ -25,5 +25,4 @@ jobs:
     - name: Build
       run: |
         make install
-        make build
         make start-daemon
