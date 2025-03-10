@@ -1,3 +1,8 @@
+if (typeof ReadableStream === 'undefined') {
+  const { ReadableStream } = require('stream/web');
+  global.ReadableStream = ReadableStream;
+}
+
 const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const cors = require('cors');
