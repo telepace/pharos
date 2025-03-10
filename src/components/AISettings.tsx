@@ -329,18 +329,8 @@ const AISettings: React.FC<AISettingsProps> = ({ onSave }) => {
               <Input
                 value={openrouterSettings.models}
                 onChange={(e) => setOpenrouterSettings({ ...openrouterSettings, models: e.target.value })}
-                placeholder="例如: anthropic/claude-3-haiku,meta-llama/llama-3-8b-instruct"
+                placeholder="例如: anthropic/claude-3-haiku,meta-llama/llama-3-8b-instruct,google/gemini-2.0-flash-001"
               />
-            </Form.Item>
-            <Form.Item label="内置模型">
-              <Select disabled style={{ width: '100%' }} mode="multiple" 
-                      defaultValue={[LLMModel.OPENROUTER_GEMINI_FLASH, LLMModel.OPENROUTER_CLAUDE_OPUS, 
-                                    LLMModel.OPENROUTER_LLAMA, LLMModel.OPENROUTER_MIXTRAL]}>
-                <Option value={LLMModel.OPENROUTER_GEMINI_FLASH}>Google Gemini 2.0 Flash</Option>
-                <Option value={LLMModel.OPENROUTER_CLAUDE_OPUS}>Anthropic Claude 3 Opus</Option>
-                <Option value={LLMModel.OPENROUTER_LLAMA}>Meta Llama 3 70B</Option>
-                <Option value={LLMModel.OPENROUTER_MIXTRAL}>Mistral Mixtral 8x7B</Option>
-              </Select>
             </Form.Item>
           </Form>
         </TabPane>
@@ -358,4 +348,4 @@ const AISettings: React.FC<AISettingsProps> = ({ onSave }) => {
   );
 };
 
-export default AISettings; 
+export default AISettings;

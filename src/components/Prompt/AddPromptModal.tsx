@@ -199,6 +199,9 @@ const AddPromptModal: React.FC<AddPromptModalProps> = ({
             {/* OpenRouter模型 */}
             <Select.OptGroup label="OpenRouter">
               {renderModelOption(LLMModel.OPENROUTER_GEMINI_FLASH)}
+              {renderModelOption(LLMModel.OPENROUTER_GEMINI_FLASH_001)}
+              {renderModelOption(LLMModel.OPENROUTER_GEMINI_PRO_EXP)}
+              {renderModelOption(LLMModel.OPENROUTER_GEMINI_FLASH_THINKING)}
               {renderModelOption(LLMModel.OPENROUTER_CLAUDE_OPUS)}
               {renderModelOption(LLMModel.OPENROUTER_LLAMA)}
               {renderModelOption(LLMModel.OPENROUTER_MIXTRAL)}
@@ -215,4 +218,4 @@ const AddPromptModal: React.FC<AddPromptModalProps> = ({
   );
 };
 
-export default AddPromptModal; 
+export default AddPromptModal;

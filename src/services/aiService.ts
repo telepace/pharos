@@ -1064,6 +1064,9 @@ export const getAvailableModels = (): { model: LLMModel; provider: AIProvider }[
     // 默认内置的OpenRouter模型
     const defaultOpenRouterModels = [
       { model: LLMModel.OPENROUTER_GEMINI_FLASH, provider: AIProvider.OPENROUTER },
+      { model: LLMModel.OPENROUTER_GEMINI_FLASH_001, provider: AIProvider.OPENROUTER },
+      { model: LLMModel.OPENROUTER_GEMINI_PRO_EXP, provider: AIProvider.OPENROUTER },
+      { model: LLMModel.OPENROUTER_GEMINI_FLASH_THINKING, provider: AIProvider.OPENROUTER },
       { model: LLMModel.OPENROUTER_CLAUDE_OPUS, provider: AIProvider.OPENROUTER },
       { model: LLMModel.OPENROUTER_LLAMA, provider: AIProvider.OPENROUTER },
       { model: LLMModel.OPENROUTER_MIXTRAL, provider: AIProvider.OPENROUTER }
@@ -1086,8 +1089,25 @@ const getAdditionalOpenRouterModels = (): { model: LLMModel; provider: AIProvide
   const openRouterModelsConfig = process.env.REACT_APP_OPENROUTER_MODELS;
   if (openRouterModelsConfig) {
     try {
-      // 格式示例: "model1,model2,model3"
-      const modelNames = openRouterModelsConfig.split(',').map(m => m.trim());
+      // 支持两种格式:
+      // 1. 简单的逗号分隔列表: "model1,model2,model3"
+      // 2. JSON数组格式: '["model1", "model2", "model3"]'
+      let modelNames: string[] = [];
+      
+      // 尝试解析为JSON数组
+      if (openRouterModelsConfig.trim().startsWith('[')) {
+        try {
+          modelNames = JSON.parse(openRouterModelsConfig);
+        } catch {
+          // 如果JSON解析失败，回退到逗号分隔格式
+          modelNames = openRouterModelsConfig.split(',').map(m => m.trim());
+        }
+      } else {
+        // 使用逗号分隔格式
+        modelNames = openRouterModelsConfig.split(',').map(m => m.trim());
+      }
+      
+      // 添加模型到列表
       modelNames.forEach(modelName => {
         if (modelName) {
           // 将模型名称作为动态模型添加
@@ -1101,6 +1121,9 @@ const getAdditionalOpenRouterModels = (): { model: LLMModel; provider: AIProvide
       console.error('解析OpenRouter额外模型配置失败:', error);
     }
   }
+  
+  // 检查是否已经在LLMModel枚举中定义了这些模型
+  // 如果没有，我们仍然可以使用它们，因为我们使用了 as LLMModel 类型断言
   
   return additionalModels;
 };
@@ -1263,4 +1286,4 @@ export const sendMessage = async (
     provider,
     usage: data.usage
   };
-}; 
+};

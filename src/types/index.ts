@@ -58,6 +58,9 @@ export enum LLMModel {
   QWEN_MAX = 'qwen-max',
   QWQ_PLUS = 'qwq-32b',
   OPENROUTER_GEMINI_FLASH = 'google/gemini-2.0-flash-lite-001',
+  OPENROUTER_GEMINI_FLASH_001 = 'google/gemini-2.0-flash-001',
+  OPENROUTER_GEMINI_PRO_EXP = 'google/gemini-2.0-pro-exp-02-05:free',
+  OPENROUTER_GEMINI_FLASH_THINKING = 'google/gemini-2.0-flash-thinking-exp:free',
   OPENROUTER_CLAUDE_OPUS = 'anthropic/claude-3-opus',
   OPENROUTER_LLAMA = 'meta-llama/llama-3-70b-instruct',
   OPENROUTER_MIXTRAL = 'mistralai/mixtral-8x7b-instruct'
@@ -99,4 +102,4 @@ export interface AIRequestMessage {
 export enum PromptType {
   DIRECT = 'direct',
   SYSTEM = 'system'
-} 
+}
