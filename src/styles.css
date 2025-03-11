@@ -31,15 +31,15 @@ code {
 ::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
 }
-
 /* 聊天消息气泡样式 */
 .message-bubble {
   max-width: 80%;
-  padding: 2px 20px;
+  min-width: 20%;
+  padding: 16px 24px 8px;
   border-radius: 8px;
   position: relative;
   border: 1.5px solid #000;
-  box-shadow: 3px 3px 0 rgba(0, 0, 0, 1); 
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 1);
   transition: all 0.3s ease;
   margin-bottom: 8px;  
 }
@@ -226,11 +226,11 @@ body.dark-theme {
 
 .typing-cursor {
   display: inline-block;
-  width: 8px;
-  height: 16px;
-  background-color: #1890ff;
-  margin-left: 4px;
-  animation: blink 1s infinite;
+  width: 1px;
+  height: 1.2em;
+  background-color: rgba(0, 0, 0, 0.75);
+  margin-left: 2px;
+  animation: blink 0.8s ease infinite;
   vertical-align: middle;
 }
 
@@ -244,14 +244,11 @@ body.dark-theme {
 }
 
 /* 流式消息样式 */
-/*.streaming-message {
-  border-left: 3px solid #1890ff;
-} */
+.streaming-message {
+  border: 1.5px solid #000;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 1);
+}
 
-/* 消息高亮动画 */
-/*.message-highlight {
-  animation: highlight 0.3s ease;
-} */
 
 @keyframes highlight {
   0% {
@@ -262,15 +259,11 @@ body.dark-theme {
   }
 }
 
-/* 消息内容过渡效果 */
-.message-bubble p {
-  transition: opacity 0.2s ease;
-}
 
-/* 流式输出时的消息容器样式 */
+/* 流式输出时的消息容器样式 
 .message-bubble.streaming-message {
   box-shadow: 0 0 8px rgba(82, 196, 26, 0.3);
-}
+} */
 
 /* 链接预览样式 */
 .link-previews {
@@ -341,3 +334,44 @@ body.dark-theme {
     max-width: 90%;
   }
 }
+
+/* 消息内容中段落的间距 */
+.message-bubble p {
+  transition: opacity 0.2s ease;
+  margin-bottom: 8px;  
+  line-height: 1.3;    
+}
+
+
+/* Markdown 标题样式 */
+.message-bubble h1 {
+  margin-top: 32px;
+  margin-bottom: 16px;
+}
+
+.message-bubble h2 {
+  margin-top: 32px;
+  margin-bottom: 14px;
+}
+
+.message-bubble h3 {
+  margin-top: 32px;
+  margin-bottom: 12px;
+}
+
+.message-bubble h4 {
+  margin-top: 32px;
+  margin-bottom: 10px;
+}
+
+.message-bubble h5, .message-bubble h6 {
+  margin-top: 24px;
+  margin-bottom: 8px;
+}
+
+/* 第一个标题不需要上边距 */
+.message-bubble *:first-child {
+  margin-top: 0;
+}
+
+
