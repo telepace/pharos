@@ -244,14 +244,14 @@ body.dark-theme {
 }
 
 /* 流式消息样式 */
-.streaming-message {
+/*.streaming-message {
   border-left: 3px solid #1890ff;
-}
+} */
 
 /* 消息高亮动画 */
-.message-highlight {
+/*.message-highlight {
   animation: highlight 0.3s ease;
-}
+} */
 
 @keyframes highlight {
   0% {
