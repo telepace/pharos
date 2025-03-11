@@ -127,39 +127,88 @@ const callOpenAI = async (
       // 返回一个Promise，在流处理完成后解析
       return new Promise<AIResponse>(async (resolve, reject) => {
         try {
+          console.log(`开始处理${AIProvider.OPENAI}流式响应...`);
+          let chunkCount = 0;
+          
           while (true) {
             const { done, value } = await reader.read();
-            if (done) break;
+            if (done) {
+              console.log(`流式响应完成，共处理${chunkCount}个数据块，总内容长度: ${fullContent.length}`);
+              break;
+            }
             
             const chunk = decoder.decode(value);
+            chunkCount++;
+            
+            // 调试原始响应
+            console.log(`接收到第${chunkCount}个数据块，长度: ${chunk.length}`);
+            if (chunk.length < 200) {
+              console.log('原始数据块内容:', chunk);
+            } else {
+              console.log('原始数据块内容(截断):', chunk.substring(0, 100) + '...');
+            }
+            
             const lines = chunk
               .split('\n')
               .filter(line => line.trim() !== '' && line.trim() !== 'data: [DONE]');
             
+            if (lines.length === 0) {
+              console.log('数据块不包含有效内容行');
+              continue;
+            }
+            
+            console.log(`处理${lines.length}行数据...`);
             for (const line of lines) {
               if (line.startsWith('data: ')) {
                 try {
                   const jsonData = JSON.parse(line.slice(6));
                   if (jsonData.choices && jsonData.choices[0]?.delta?.content) {
                     const content = jsonData.choices[0].delta.content;
+                    console.log("流式内容片段:", content.length < 50 ? content : content.substring(0, 50) + '...');
                     fullContent += content;
-                    streamCallback(content);
+                    
+                    // 确保回调函数正常工作
+                    try {
+                      streamCallback(content);
+                    } catch (callbackError) {
+                      console.error('流回调函数执行错误:', callbackError);
+                    }
+                  } else {
+                    console.log('JSON数据不包含内容:', JSON.stringify(jsonData).substring(0, 100) + '...');
                   }
-                } catch (e) {
-                  console.warn('解析流数据时出错:', e);
+                } catch (parseError) {
+                  console.warn('解析流数据时出错:', parseError, '原始行:', line.substring(0, 100) + '...');
                 }
+              } else {
+                console.log('非data行:', line.substring(0, 100) + '...');
               }
             }
           }
           
           // 流处理完成后返回完整响应
+          if (fullContent.trim() === '') {
+            console.warn('警告: 流式响应处理完成，但内容为空');
+          }
+          
           resolve({
             content: fullContent,
             model,
             provider: AIProvider.OPENAI
           });
         } catch (error) {
-          reject(error);
+          console.error(`${AIProvider.OPENAI}流式响应处理错误:`, error);
+          
+          // 即使出错，也尝试返回已收集的内容
+          if (fullContent.trim() !== '') {
+            console.log('尽管出错，仍返回已收集的内容:', fullContent.length);
+            resolve({
+              content: fullContent + '\n\n[流式响应处理中断]',
+              model,
+              provider: AIProvider.OPENAI
+            });
+          } else {
+            reject(error);
+          }
         }
       });
     }
@@ -230,29 +279,65 @@ const callClaude = async (
       
       return new Promise<AIResponse>(async (resolve, reject) => {
         try {
+          console.log(`开始处理${AIProvider.CLAUDE}流式响应...`);
+          let chunkCount = 0;
+          
           while (true) {
             const { done, value } = await reader.read();
-            if (done) break;
+            if (done) {
+              console.log(`流式响应完成，共处理${chunkCount}个数据块，总内容长度: ${fullContent.length}`);
+              break;
+            }
             
             const chunk = decoder.decode(value);
+            chunkCount++;
+            
+            // 调试原始响应
+            console.log(`接收到第${chunkCount}个数据块，长度: ${chunk.length}`);
+            if (chunk.length < 200) {
+              console.log('原始数据块内容:', chunk);
+            } else {
+              console.log('原始数据块内容(截断):', chunk.substring(0, 100) + '...');
+            }
+            
             const lines = chunk
               .split('\n')
               .filter(line => line.trim() !== '' && line.trim() !== 'data: [DONE]');
             
+            if (lines.length === 0) {
+              console.log('数据块不包含有效内容行');
+              continue;
+            }
+            
+            console.log(`处理${lines.length}行数据...`);
             for (const line of lines) {
               if (line.startsWith('data: ')) {
                 try {
                   const jsonData = JSON.parse(line.slice(6));
                   if (jsonData.type === 'content_block_delta' && jsonData.delta?.text) {
                     const content = jsonData.delta.text;
+                    console.log("流式内容片段:", content.length < 50 ? content : content.substring(0, 50) + '...');
                     fullContent += content;
-                    streamCallback(content);
+                    
+                    // 确保回调函数正常工作
+                    try {
+                      streamCallback(content);
+                    } catch (callbackError) {
+                      console.error('流回调函数执行错误:', callbackError);
+                    }
                   }
-                } catch (e) {
-                  console.warn('解析Claude流数据时出错:', e);
+                } catch (parseError) {
+                  console.warn('解析流数据时出错:', parseError, '原始行:', line.substring(0, 100) + '...');
                 }
+              } else {
+                console.log('非data行:', line.substring(0, 100) + '...');
               }
             }
+          }
+          
+          // 流处理完成后返回完整响应
+          if (fullContent.trim() === '') {
+            console.warn('警告: 流式响应处理完成，但内容为空');
           }
           
           resolve({
@@ -261,7 +346,19 @@ const callClaude = async (
             provider: AIProvider.CLAUDE
           });
         } catch (error) {
-          reject(error);
+          console.error(`${AIProvider.CLAUDE}流式响应处理错误:`, error);
+          
+          // 即使出错，也尝试返回已收集的内容
+          if (fullContent.trim() !== '') {
+            console.log('尽管出错，仍返回已收集的内容:', fullContent.length);
+            resolve({
+              content: fullContent + '\n\n[流式响应处理中断]',
+              model,
+              provider: AIProvider.CLAUDE
+            });
+          } else {
+            reject(error);
+          }
         }
       });
     }
@@ -352,15 +449,37 @@ const callGemini = async (
       
       return new Promise<AIResponse>(async (resolve, reject) => {
         try {
+          console.log(`开始处理${AIProvider.GEMINI}流式响应...`);
+          let chunkCount = 0;
+          
           while (true) {
             const { done, value } = await reader.read();
-            if (done) break;
+            if (done) {
+              console.log(`流式响应完成，共处理${chunkCount}个数据块，总内容长度: ${fullContent.length}`);
+              break;
+            }
             
             const chunk = decoder.decode(value);
+            chunkCount++;
+            
+            // 调试原始响应
+            console.log(`接收到第${chunkCount}个数据块，长度: ${chunk.length}`);
+            if (chunk.length < 200) {
+              console.log('原始数据块内容:', chunk);
+            } else {
+              console.log('原始数据块内容(截断):', chunk.substring(0, 100) + '...');
+            }
+            
             const lines = chunk
               .split('\n')
               .filter(line => line.trim() !== '' && line.trim() !== 'data: [DONE]');
             
+            if (lines.length === 0) {
+              console.log('数据块不包含有效内容行');
+              continue;
+            }
+            
+            console.log(`处理${lines.length}行数据...`);
             for (const line of lines) {
               if (line.startsWith('data: ')) {
                 try {
@@ -369,14 +488,28 @@ const callGemini = async (
                       jsonData.candidates[0]?.content?.parts && 
                       jsonData.candidates[0].content.parts[0]?.text) {
                     const content = jsonData.candidates[0].content.parts[0].text;
+                    console.log("流式内容片段:", content.length < 50 ? content : content.substring(0, 50) + '...');
                     fullContent += content;
-                    streamCallback(content);
+                    
+                    // 确保回调函数正常工作
+                    try {
+                      streamCallback(content);
+                    } catch (callbackError) {
+                      console.error('流回调函数执行错误:', callbackError);
+                    }
                   }
-                } catch (e) {
-                  console.warn('解析Gemini流数据时出错:', e);
+                } catch (parseError) {
+                  console.warn('解析流数据时出错:', parseError, '原始行:', line.substring(0, 100) + '...');
                 }
+              } else {
+                console.log('非data行:', line.substring(0, 100) + '...');
               }
             }
+          }
+          
+          // 流处理完成后返回完整响应
+          if (fullContent.trim() === '') {
+            console.warn('警告: 流式响应处理完成，但内容为空');
           }
           
           resolve({
@@ -385,7 +518,19 @@ const callGemini = async (
             provider: AIProvider.GEMINI
           });
         } catch (error) {
-          reject(error);
+          console.error(`${AIProvider.GEMINI}流式响应处理错误:`, error);
+          
+          // 即使出错，也尝试返回已收集的内容
+          if (fullContent.trim() !== '') {
+            console.log('尽管出错，仍返回已收集的内容:', fullContent.length);
+            resolve({
+              content: fullContent + '\n\n[流式响应处理中断]',
+              model,
+              provider: AIProvider.GEMINI
+            });
+          } else {
+            reject(error);
+          }
         }
       });
     }
@@ -446,29 +591,65 @@ const callDeepSeek = async (
       
       return new Promise<AIResponse>(async (resolve, reject) => {
         try {
+          console.log(`开始处理${AIProvider.DEEPSEEK}流式响应...`);
+          let chunkCount = 0;
+          
           while (true) {
             const { done, value } = await reader.read();
-            if (done) break;
+            if (done) {
+              console.log(`流式响应完成，共处理${chunkCount}个数据块，总内容长度: ${fullContent.length}`);
+              break;
+            }
             
             const chunk = decoder.decode(value);
+            chunkCount++;
+            
+            // 调试原始响应
+            console.log(`接收到第${chunkCount}个数据块，长度: ${chunk.length}`);
+            if (chunk.length < 200) {
+              console.log('原始数据块内容:', chunk);
+            } else {
+              console.log('原始数据块内容(截断):', chunk.substring(0, 100) + '...');
+            }
+            
             const lines = chunk
               .split('\n')
               .filter(line => line.trim() !== '' && line.trim() !== 'data: [DONE]');
             
+            if (lines.length === 0) {
+              console.log('数据块不包含有效内容行');
+              continue;
+            }
+            
+            console.log(`处理${lines.length}行数据...`);
             for (const line of lines) {
               if (line.startsWith('data: ')) {
                 try {
                   const jsonData = JSON.parse(line.slice(6));
                   if (jsonData.choices && jsonData.choices[0]?.delta?.content) {
                     const content = jsonData.choices[0].delta.content;
+                    console.log("流式内容片段:", content.length < 50 ? content : content.substring(0, 50) + '...');
                     fullContent += content;
-                    streamCallback(content);
+                    
+                    // 确保回调函数正常工作
+                    try {
+                      streamCallback(content);
+                    } catch (callbackError) {
+                      console.error('流回调函数执行错误:', callbackError);
+                    }
                   }
-                } catch (e) {
-                  console.warn('解析DeepSeek流数据时出错:', e);
+                } catch (parseError) {
+                  console.warn('解析流数据时出错:', parseError, '原始行:', line.substring(0, 100) + '...');
                 }
+              } else {
+                console.log('非data行:', line.substring(0, 100) + '...');
               }
             }
+          }
+          
+          // 流处理完成后返回完整响应
+          if (fullContent.trim() === '') {
+            console.warn('警告: 流式响应处理完成，但内容为空');
           }
           
           resolve({
@@ -477,7 +658,19 @@ const callDeepSeek = async (
             provider: AIProvider.DEEPSEEK
           });
         } catch (error) {
-          reject(error);
+          console.error(`${AIProvider.DEEPSEEK}流式响应处理错误:`, error);
+          
+          // 即使出错，也尝试返回已收集的内容
+          if (fullContent.trim() !== '') {
+            console.log('尽管出错，仍返回已收集的内容:', fullContent.length);
+            resolve({
+              content: fullContent + '\n\n[流式响应处理中断]',
+              model,
+              provider: AIProvider.DEEPSEEK
+            });
+          } else {
+            reject(error);
+          }
         }
       });
     }
@@ -548,29 +741,65 @@ const callHuoshan = async (
       
       return new Promise<AIResponse>(async (resolve, reject) => {
         try {
+          console.log(`开始处理${AIProvider.HUOSHAN}流式响应...`);
+          let chunkCount = 0;
+          
           while (true) {
             const { done, value } = await reader.read();
-            if (done) break;
+            if (done) {
+              console.log(`流式响应完成，共处理${chunkCount}个数据块，总内容长度: ${fullContent.length}`);
+              break;
+            }
             
             const chunk = decoder.decode(value);
+            chunkCount++;
+            
+            // 调试原始响应
+            console.log(`接收到第${chunkCount}个数据块，长度: ${chunk.length}`);
+            if (chunk.length < 200) {
+              console.log('原始数据块内容:', chunk);
+            } else {
+              console.log('原始数据块内容(截断):', chunk.substring(0, 100) + '...');
+            }
+            
             const lines = chunk
               .split('\n')
               .filter(line => line.trim() !== '' && line.trim() !== 'data: [DONE]');
             
+            if (lines.length === 0) {
+              console.log('数据块不包含有效内容行');
+              continue;
+            }
+            
+            console.log(`处理${lines.length}行数据...`);
             for (const line of lines) {
               if (line.startsWith('data: ')) {
                 try {
                   const jsonData = JSON.parse(line.slice(6));
                   if (jsonData.choices && jsonData.choices[0]?.delta?.content) {
                     const content = jsonData.choices[0].delta.content;
+                    console.log("流式内容片段:", content.length < 50 ? content : content.substring(0, 50) + '...');
                     fullContent += content;
-                    streamCallback(content);
+                    
+                    // 确保回调函数正常工作
+                    try {
+                      streamCallback(content);
+                    } catch (callbackError) {
+                      console.error('流回调函数执行错误:', callbackError);
+                    }
                   }
-                } catch (e) {
-                  console.warn('解析火山流数据时出错:', e);
+                } catch (parseError) {
+                  console.warn('解析流数据时出错:', parseError, '原始行:', line.substring(0, 100) + '...');
                 }
+              } else {
+                console.log('非data行:', line.substring(0, 100) + '...');
               }
             }
+          }
+          
+          // 流处理完成后返回完整响应
+          if (fullContent.trim() === '') {
+            console.warn('警告: 流式响应处理完成，但内容为空');
           }
           
           resolve({
@@ -579,7 +808,19 @@ const callHuoshan = async (
             provider: AIProvider.HUOSHAN
           });
         } catch (error) {
-          reject(error);
+          console.error(`${AIProvider.HUOSHAN}流式响应处理错误:`, error);
+          
+          // 即使出错，也尝试返回已收集的内容
+          if (fullContent.trim() !== '') {
+            console.log('尽管出错，仍返回已收集的内容:', fullContent.length);
+            resolve({
+              content: fullContent + '\n\n[流式响应处理中断]',
+              model,
+              provider: AIProvider.HUOSHAN
+            });
+          } else {
+            reject(error);
+          }
         }
       });
     }
@@ -657,15 +898,37 @@ const callQwen = async (
       
       return new Promise<AIResponse>(async (resolve, reject) => {
         try {
+          console.log(`开始处理${AIProvider.QWEN}流式响应...`);
+          let chunkCount = 0;
+          
           while (true) {
             const { done, value } = await reader.read();
-            if (done) break;
+            if (done) {
+              console.log(`流式响应完成，共处理${chunkCount}个数据块，总内容长度: ${fullContent.length}`);
+              break;
+            }
             
             const chunk = decoder.decode(value);
+            chunkCount++;
+            
+            // 调试原始响应
+            console.log(`接收到第${chunkCount}个数据块，长度: ${chunk.length}`);
+            if (chunk.length < 200) {
+              console.log('原始数据块内容:', chunk);
+            } else {
+              console.log('原始数据块内容(截断):', chunk.substring(0, 100) + '...');
+            }
+            
             const lines = chunk
               .split('\n')
               .filter(line => line.trim() !== '' && line.trim() !== 'data: [DONE]');
             
+            if (lines.length === 0) {
+              console.log('数据块不包含有效内容行');
+              continue;
+            }
+            
+            console.log(`处理${lines.length}行数据...`);
             for (const line of lines) {
               if (line.startsWith('data: ')) {
                 try {
@@ -695,14 +958,17 @@ const callQwen = async (
                   // 处理标准流式响应
                   else if (jsonData.choices && jsonData.choices[0]?.delta?.content) {
                     const content = jsonData.choices[0].delta.content;
+                    console.log("流式内容片段:", content.length < 50 ? content : content.substring(0, 50) + '...');
                     fullContent += content;
                     if (streamCallback) {
                       streamCallback(content);
                     }
                   }
-                } catch (e) {
-                  console.warn('解析千问流数据时出错:', e);
+                } catch (parseError) {
+                  console.warn('解析流数据时出错:', parseError, '原始行:', line.substring(0, 100) + '...');
                 }
+              } else {
+                console.log('非data行:', line.substring(0, 100) + '...');
               }
             }
           }
@@ -721,7 +987,19 @@ const callQwen = async (
           
           resolve(aiResponse);
         } catch (error) {
-          reject(error);
+          console.error(`${AIProvider.QWEN}流式响应处理错误:`, error);
+          
+          // 即使出错，也尝试返回已收集的内容
+          if (fullContent.trim() !== '') {
+            console.log('尽管出错，仍返回已收集的内容:', fullContent.length);
+            resolve({
+              content: fullContent + '\n\n[流式响应处理中断]',
+              model: model.toString(),
+              provider: AIProvider.QWEN
+            });
+          } else {
+            reject(error);
+          }
         }
       });
     }
@@ -776,7 +1054,8 @@ const callOpenRouter = async (
     
     if (siteName) {
       // 确保站点名称只包含ASCII字符
-      const asciiSiteName = siteName.replace(/[^\x00-\x7F]/g, ''); // 移除非ASCII字符
+      // eslint-disable-next-line no-control-regex
+      const asciiSiteName = siteName.replace(/[^\u0000-\u007F]/g, ''); // 移除非ASCII字符
       if (asciiSiteName.length > 0) {
         headers['X-Title'] = asciiSiteName;
       }
@@ -913,12 +1192,14 @@ export const sendMessageToAI = async (
   // 如果使用全局设置，并且提供了全局设置
   let finalModel = model;
   let finalPromptContent = promptContent;
-  let finalPromptType = promptType;
+
+  console.log(`准备发送消息到AI，模型: ${model}, 会话ID: ${conversationId || '无'}`);
 
   if (useGlobalSettings && globalSettings) {
     // 只有当没有指定模型时（model为默认值），才使用全局默认模型
     if (model === LLMModel.GPT35 && globalSettings.defaultModel) {
       finalModel = globalSettings.defaultModel;
+      console.log(`使用全局默认模型: ${finalModel}`);
     }
 
     // 处理全局Prompt
@@ -926,10 +1207,11 @@ export const sendMessageToAI = async (
       if (finalPromptContent && globalSettings.globalPromptType === PromptType.SYSTEM) {
         // 如果已有prompt且全局prompt是system类型，则组合两者
         finalPromptContent = `${globalSettings.globalPrompt}\n\n${finalPromptContent}`;
+        console.log('已组合全局提示和特定提示');
       } else if (!finalPromptContent) {
         // 如果没有prompt，直接使用全局prompt
         finalPromptContent = globalSettings.globalPrompt;
-        finalPromptType = globalSettings.globalPromptType || PromptType.SYSTEM;
+        console.log('使用全局提示');
       }
     }
   }
@@ -950,6 +1232,13 @@ export const sendMessageToAI = async (
     // 确定AI提供商
     const provider = getProviderFromModel(finalModel);
     const config = getAIConfig(provider);
+    
+    console.log(`使用AI提供商: ${provider}, 模型: ${finalModel}`);
+    
+    // 检查API密钥是否配置
+    if (!config.apiKey) {
+      throw new Error(`${provider} API密钥未配置，请在.env文件中设置`);
+    }
 
     // 根据提供商调用相应的API
     let response: AIResponse;
@@ -979,6 +1268,8 @@ export const sendMessageToAI = async (
         throw new Error(`不支持的AI提供商: ${provider}`);
     }
 
+    console.log(`AI响应成功，内容长度: ${response.content.length}`);
+
     // 记录 AI 生成结果
     if (trace) {
       trackAIGeneration(trace, messages, finalPromptContent, finalModel, provider, response);
@@ -987,6 +1278,13 @@ export const sendMessageToAI = async (
     return response;
   } catch (error) {
     console.error('发送消息到AI时出错:', error);
+    
+    // 记录更详细的错误信息
+    if (error instanceof Error) {
+      console.error(`错误名称: ${error.name}`);
+      console.error(`错误消息: ${error.message}`);
+      console.error(`错误堆栈: ${error.stack}`);
+    }
     
     // 记录错误
     if (trace) {

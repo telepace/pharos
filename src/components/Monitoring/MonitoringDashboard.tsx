@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, Typography, Button, Statistic, Row, Col, Divider, Alert, Spin, Empty } from 'antd';
 import { initLangfuse } from '../../services/langfuseService';
 
-const { Title, Paragraph, Text, Link } = Typography;
+const { Title, Paragraph } = Typography;
 
 const MonitoringDashboard: React.FC = () => {
   const [isMonitoringEnabled, setIsMonitoringEnabled] = useState<boolean>(false);
@@ -136,4 +136,4 @@ REACT_APP_LANGFUSE_HOST='https://cloud.langfuse.com'`}
   );
 };
 
-export default MonitoringDashboard; 
+export default MonitoringDashboard;

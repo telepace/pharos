@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Card, Form, Select, Input, Switch, Button, Typography, Divider, Radio, Space, message, Tabs } from 'antd';
 import { SaveOutlined, UndoOutlined, ArrowLeftOutlined, DashboardOutlined, SettingOutlined } from '@ant-design/icons';
 import { useSettings } from '../../contexts/SettingsContext';
-import { LLMModel, PromptType } from '../../types';
+import { PromptType } from '../../types';
 import { getAvailableModels } from '../../services/aiService';
 import MonitoringDashboard from '../Monitoring/MonitoringDashboard';
 
@@ -214,4 +214,4 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
   );
 };
 
-export default SettingsPage; 
+export default SettingsPage;

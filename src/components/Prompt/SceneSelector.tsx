@@ -80,6 +80,7 @@ const SceneSelector: React.FC = () => {
         if (!scene) return node;
         
         // 判断是否为当前激活的标签
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const isActive = scene.id === activeSceneId;
         
         return (
@@ -185,4 +186,4 @@ const SceneSelector: React.FC = () => {
   );
 };
 
-export default SceneSelector; 
+export default SceneSelector;

@@ -4,8 +4,10 @@ import { Prompt, LLMModel, PromptType } from '../types';
 import { 
   getPrompts, 
   savePrompts, 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   addPrompt as addPromptToStorage,
   deletePrompt as deletePromptFromStorage,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   getPromptsBySceneId
 } from '../services/localStorage';
 import { useSceneContext } from './SceneContext';
@@ -187,4 +189,4 @@ export const PromptProvider: React.FC<PromptProviderProps> = ({ children }) => {
       {children}
     </PromptContext.Provider>
   );
-}; 
+};

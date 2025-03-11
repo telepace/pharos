@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { List, Button, Typography, Dropdown, Input, Modal, Space, Tooltip } from 'antd';
+import { List, Button, Typography, Dropdown, Input, Modal } from 'antd';
 import { 
   PlusOutlined, 
   EditOutlined, 
@@ -45,10 +45,8 @@ const ConversationList: React.FC = () => {
     }
   };
   
-  // 取消编辑
-  const cancelEditing = () => {
-    setEditingId(null);
-  };
+  // 取消编辑功能已集成到保存编辑和其他交互中
+  // 不再需要单独的cancelEditing函数
   
   // 确认删除
   const showDeleteConfirm = (conversationId: string) => {

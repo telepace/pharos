@@ -40,6 +40,9 @@ code {
   position: relative;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   transition: all 0.3s ease;
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: block !important;
 }
 
 .user-message {
@@ -224,20 +227,22 @@ body.dark-theme {
 
 .typing-cursor {
   display: inline-block;
-  width: 8px;
-  height: 16px;
+  width: 6px;
+  height: 15px;
   background-color: #1890ff;
-  margin-left: 4px;
+  margin-left: 2px;
   animation: blink 1s infinite;
-  vertical-align: middle;
 }
 
 @keyframes blink {
-  0%, 100% {
+  0% {
     opacity: 1;
   }
   50% {
     opacity: 0;
+  }
+  100% {
+    opacity: 1;
   }
 }
 
@@ -253,7 +258,7 @@ body.dark-theme {
 
 @keyframes highlight {
   0% {
-    background-color: rgba(24, 144, 255, 0.1);
+    background-color: rgba(82, 196, 26, 0.2);
   }
   100% {
     background-color: inherit;
@@ -261,8 +266,13 @@ body.dark-theme {
 }
 
 /* 消息内容过渡效果 */
-.message-bubble p {
-  transition: opacity 0.2s ease;
+.message-bubble p,
+.message-bubble div,
+.message-bubble span,
+.message-bubble pre,
+.message-bubble code {
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
 /* 流式输出时的消息容器样式 */

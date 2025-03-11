@@ -1,5 +1,5 @@
 import { Langfuse } from 'langfuse';
-import { v4 as uuidv4 } from 'uuid';
+// Removing unused import
 import { Message, LLMModel, AIProvider, AIResponse } from '../types';
 
 // 单例模式
@@ -202,4 +202,4 @@ export const endTrace = (trace: any) => {
   } catch (error) {
     console.error('结束跟踪失败:', error);
   }
-}; 
+};

@@ -9,8 +9,7 @@ import {
   getCurrentConversation, 
   saveCurrentConversation,
   getConversations,
-  saveConversations,
-  deleteConversation
+  saveConversations
 } from '../services/localStorage';
 import { LLMModel, PromptType } from '../types';
 import { getOrCreateTrace, trackAIGeneration } from '../services/langfuseService';
@@ -58,54 +57,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   const { activeSceneId } = useSceneContext();
   const { settings } = useSettings();
 
-  // 初始化对话列表
-  useEffect(() => {
-    const storedConversations = getConversations();
-    setConversations(storedConversations);
-    
-    const storedCurrentConversation = getCurrentConversation();
-    
-    if (storedCurrentConversation) {
-      setCurrentConversation(storedCurrentConversation);
-      setMessages(storedCurrentConversation.messages);
-    } else {
-      // 创建新对话
-      createNewConversation();
-    }
-  }, []);
-
-  // 当场景或提示变化时，更新当前对话
-  useEffect(() => {
-    if (currentConversation) {
-      const updatedConversation: Conversation = {
-        ...currentConversation,
-        activePromptId: getActivePrompt()?.id || null,
-        sceneId: activeSceneId,
-        updatedAt: Date.now()
-      };
-      
-      updateConversation(updatedConversation);
-    }
-  }, [activeSceneId, getActivePrompt]);
-
-  // 更新对话
-  const updateConversation = (conversation: Conversation) => {
-    setCurrentConversation(conversation);
-    setMessages(conversation.messages);
-    
-    // 更新对话列表
-    const updatedConversations = conversations.map(conv => 
-      conv.id === conversation.id ? conversation : conv
-    );
-    setConversations(updatedConversations);
-    
-    // 保存到本地存储
-    saveCurrentConversation(conversation);
-    saveConversations(updatedConversations);
-  };
-
   // 创建新对话
-  const createNewConversation = () => {
+  const createNewConversation = useCallback(() => {
     const timestamp = Date.now();
     const newConversation: Conversation = {
       id: uuidv4(),
@@ -127,64 +80,61 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     // 保存到本地存储
     saveCurrentConversation(newConversation);
     saveConversations(updatedConversations);
-  };
+  }, [activeSceneId, conversations, getActivePrompt]);
 
-  // 切换对话
-  const switchConversation = (conversationId: string) => {
-    const conversation = conversations.find(conv => conv.id === conversationId);
-    if (conversation) {
-      setCurrentConversation(conversation);
-      setMessages(conversation.messages);
-      saveCurrentConversation(conversation);
+  // 初始化对话列表
+  useEffect(() => {
+    const storedConversations = getConversations();
+    setConversations(storedConversations);
+    
+    const storedCurrentConversation = getCurrentConversation();
+    
+    if (storedCurrentConversation) {
+      setCurrentConversation(storedCurrentConversation);
+      setMessages(storedCurrentConversation.messages);
+    } else {
+      // 创建新对话
+      createNewConversation();
     }
-  };
+  }, [createNewConversation]);
 
-  // 重命名对话
-  const renameConversation = (conversationId: string, newName: string) => {
-    const updatedConversations = conversations.map(conv => 
-      conv.id === conversationId 
-        ? { ...conv, name: newName, updatedAt: Date.now() } 
-        : conv
-    );
+  // 将 updateConversation 的定义移动到使用它的 useEffect 之前
+  const updateConversation = useCallback((conversation: Conversation) => {
+    // 更新当前对话
+    setCurrentConversation(conversation);
     
-    setConversations(updatedConversations);
+    // 更新消息列表
+    setMessages(conversation.messages);
     
-    if (currentConversation?.id === conversationId) {
-      const updatedCurrentConversation = { 
-        ...currentConversation, 
-        name: newName,
+    // 保存到本地存储
+    saveCurrentConversation(conversation);
+    
+    // 更新对话列表
+    setConversations(currentConversations => {
+      const updatedConversations = currentConversations.map(conv => 
+        conv.id === conversation.id ? conversation : conv
+      );
+      saveConversations(updatedConversations);
+      return updatedConversations;
+    });
+  }, [setConversations]);
+
+  // 当场景或提示变化时，更新当前对话
+  useEffect(() => {
+    if (currentConversation) {
+      const updatedConversation: Conversation = {
+        ...currentConversation,
+        activePromptId: getActivePrompt()?.id || null,
+        sceneId: activeSceneId,
         updatedAt: Date.now()
       };
-      setCurrentConversation(updatedCurrentConversation);
+      
+      updateConversation(updatedConversation);
     }
-    
-    saveConversations(updatedConversations);
-  };
-
-  // 删除对话
-  const handleDeleteConversation = (conversationId: string) => {
-    // 从列表中删除
-    const updatedConversations = conversations.filter(conv => conv.id !== conversationId);
-    setConversations(updatedConversations);
-    
-    // 如果删除的是当前对话，切换到另一个对话或创建新对话
-    if (currentConversation?.id === conversationId) {
-      if (updatedConversations.length > 0) {
-        const newCurrentConversation = updatedConversations[0];
-        setCurrentConversation(newCurrentConversation);
-        setMessages(newCurrentConversation.messages);
-        saveCurrentConversation(newCurrentConversation);
-      } else {
-        createNewConversation();
-      }
-    }
-    
-    // 从本地存储中删除
-    deleteConversation(conversationId);
-    saveConversations(updatedConversations);
-  };
+  }, [activeSceneId, getActivePrompt, currentConversation, updateConversation]);
 
   // 使用防抖动更新消息内容
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const updateMessageWithDebounce = useCallback((messageId: string, content: string) => {
     setMessages(currentMessages => {
       const updatedMessages = currentMessages.map(msg => {
@@ -202,6 +152,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   }, []);
 
   // 使用防抖动更新对话
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const updateConversationWithDebounce = useCallback((conversation: Conversation) => {
     // 使用本地变量存储最新的对话，避免频繁更新状态
     const updatedConversation = { ...conversation };
@@ -272,43 +223,74 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     let fullStreamContent = '';
     // 用于控制本地存储更新频率的计时器
     let saveTimer: NodeJS.Timeout | null = null;
+    // 标记是否已经完成流式响应
+    let isStreamCompleted = false;
     
     try {
       // 确定是否使用特定模型
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const hasSpecificModel = activePrompt?.model && activePrompt.model !== LLMModel.GPT35;
       
       // 处理流式响应的回调函数
       const handleStreamChunk = (chunk: string) => {
+        // 如果流已经完成，不再处理新的chunk
+        if (isStreamCompleted) {
+          console.log("流已完成，忽略新的chunk");
+          return;
+        }
+        
+        // 确保chunk是字符串
+        if (typeof chunk !== 'string') {
+          console.error('收到非字符串类型的chunk:', chunk);
+          return;
+        }
+        
         // 更新完整内容
         fullStreamContent += chunk;
+        console.log("流式更新:", assistantMessageId, "当前内容长度:", fullStreamContent.length);
         
-        // 更新消息内容
+        // 直接更新消息列表中的AI回复内容
         setMessages(currentMessages => {
-          const updatedMessages = currentMessages.map(msg => {
-            if (msg.id === assistantMessageId) {
-              return {
-                ...msg,
-                content: fullStreamContent
-              };
-            }
-            return msg;
-          });
+          // 首先检查当前消息列表中是否包含assistantMessage
+          const messageIndex = currentMessages.findIndex(msg => msg.id === assistantMessageId);
           
-          // 更新当前对话
-          if (currentConversation) {
-            const updatedConversation: Conversation = {
-              ...currentConversation,
-              messages: updatedMessages,
-              updatedAt: Date.now()
-            };
-            
-            // 清除之前的计时器
-            if (saveTimer) {
-              clearTimeout(saveTimer);
-            }
-            
-            // 设置新的计时器，500ms后保存到本地存储
-            saveTimer = setTimeout(() => {
+          if (messageIndex === -1) {
+            console.warn("警告: 流式更新时未找到AI消息，重新添加");
+            // 如果不存在，重新添加
+            return [
+              ...currentMessages,
+              {
+                id: assistantMessageId,
+                content: fullStreamContent,
+                role: 'assistant' as const,
+                timestamp: Date.now()
+              }
+            ];
+          }
+          
+          // 创建一个新的消息数组，避免直接修改原数组
+          const newMessages = [...currentMessages];
+          
+          // 更新AI回复消息的内容
+          newMessages[messageIndex] = {
+            ...newMessages[messageIndex],
+            content: fullStreamContent
+          };
+          
+          // 清除之前的计时器
+          if (saveTimer) {
+            clearTimeout(saveTimer);
+          }
+          
+          // 设置新的计时器，500ms后保存到本地存储
+          saveTimer = setTimeout(() => {
+            if (currentConversation) {
+              const updatedConversation: Conversation = {
+                ...currentConversation,
+                messages: newMessages,
+                updatedAt: Date.now()
+              };
+              
               saveCurrentConversation(updatedConversation);
               
               // 更新对话列表
@@ -316,66 +298,102 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
                 const updatedConversations = currentConversations.map(conv => 
                   conv.id === updatedConversation.id ? updatedConversation : conv
                 );
+                
                 saveConversations(updatedConversations);
                 return updatedConversations;
               });
-            }, 500);
-          }
+            }
+          }, 500);
           
-          return updatedMessages;
+          return newMessages;
         });
       };
+
+      // 使用适当的模型和提示发送消息
+      let modelToUse = settings.defaultModel as LLMModel;
+      let systemPromptToUse = settings.globalPrompt;
       
-      const aiResponse = await sendMessageToAI(
+      // 如果有活动提示，使用其模型和内容
+      if (activePrompt) {
+        if (activePrompt.model) {
+          modelToUse = activePrompt.model as LLMModel;
+        }
+        
+        if (activePrompt.type === PromptType.SYSTEM) {
+          systemPromptToUse = activePrompt.content;
+        }
+      }
+      
+      // 创建跟踪ID
+      const traceId = getOrCreateTrace(currentConversation.id);
+      
+      // 创建观察ID
+      const observationId = uuidv4();
+      setObservationIds(prev => ({
+        ...prev,
+        [assistantMessageId]: observationId
+      }));
+      
+      // 发送消息到AI
+      const response = await sendMessageToAI(
         updatedMessages,
-        activePrompt?.content || null,
+        systemPromptToUse,
         activePrompt?.type || PromptType.SYSTEM,
-        activePrompt?.model as LLMModel || LLMModel.GPT35,
-        true, // 使用全局设置
+        modelToUse,
+        settings.useGlobalPrompt,
         {
-          defaultModel: settings.defaultModel,
+          defaultModel: settings.defaultModel as LLMModel,
           globalPrompt: settings.globalPrompt,
           useGlobalPrompt: settings.useGlobalPrompt,
           globalPromptType: settings.globalPromptType
         },
-        handleStreamChunk, // 传递流式处理回调
-        currentConversation?.id // 传递会话ID用于监控
+        handleStreamChunk,
+        currentConversation.id
       );
       
-      // 创建 Langfuse 跟踪并记录 AI 生成
-      const trace = getOrCreateTrace(currentConversation.id, currentConversation.name);
-      if (trace) {
-        const generation = trackAIGeneration(
-          trace,
+      // 标记流式响应已完成
+      isStreamCompleted = true;
+      
+      // 跟踪AI生成
+      if (traceId) {
+        trackAIGeneration(
+          traceId, 
           updatedMessages,
-          activePrompt?.content || null,
-          activePrompt?.model as LLMModel || LLMModel.GPT35,
-          aiResponse.provider,
-          aiResponse
+          systemPromptToUse,
+          modelToUse,
+          response.provider,
+          response
         );
-        
-        // 保存生成的 observationId，用于后续反馈
-        if (generation) {
-          setObservationIds(prev => ({
-            ...prev,
-            [assistantMessageId]: generation.id
-          }));
-        }
       }
       
-      // 流式响应完成后，确保最终消息内容与AI响应一致
+      // 确保最终消息内容是完整的
       setMessages(currentMessages => {
-        const finalMessages = currentMessages.map(msg => {
-          if (msg.id === assistantMessageId) {
-            return {
-              ...msg,
-              content: aiResponse.content
-            };
-          }
-          return msg;
-        });
+        // 查找AI回复消息
+        const messageIndex = currentMessages.findIndex(msg => msg.id === assistantMessageId);
         
-        // 更新对话
+        if (messageIndex === -1) {
+          console.warn("警告: 流式响应完成时未找到AI消息，重新添加");
+          return [
+            ...currentMessages,
+            {
+              id: assistantMessageId,
+              content: fullStreamContent || response.content,
+              role: 'assistant',
+              timestamp: Date.now()
+            }
+          ];
+        }
+        
+        // 创建一个新的消息数组
+        const finalMessages = [...currentMessages];
+        
+        // 更新AI回复消息的内容
+        finalMessages[messageIndex] = {
+          ...finalMessages[messageIndex],
+          content: fullStreamContent || response.content
+        };
+        
+        // 更新当前对话
         if (currentConversation) {
           const finalConversation: Conversation = {
             ...currentConversation,
@@ -383,48 +401,116 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
             updatedAt: Date.now()
           };
           
-          updateConversation(finalConversation);
+          // 保存到本地存储
+          saveCurrentConversation(finalConversation);
+          
+          // 更新对话列表
+          setConversations(currentConversations => {
+            const updatedConversations = currentConversations.map(conv => 
+              conv.id === finalConversation.id ? finalConversation : conv
+            );
+            
+            saveConversations(updatedConversations);
+            return updatedConversations;
+          });
         }
         
         return finalMessages;
       });
     } catch (error) {
-      console.error('Error sending message to AI:', error);
+      console.error('发送消息失败:', error);
       
-      // 更新错误消息
-      setMessages(currentMessages => {
-        const errorMessages = currentMessages.map(msg => {
-          if (msg.id === assistantMessageId) {
-            return {
-              ...msg,
-              content: `抱歉，发生了错误，请稍后再试。\n\n错误详情: ${error instanceof Error ? error.message : '未知错误'}`
-            };
+      // 即使出错，也尝试保留已收到的内容
+      if (fullStreamContent.trim() !== '') {
+        setMessages(currentMessages => {
+          // 查找AI回复消息
+          const messageIndex = currentMessages.findIndex(msg => msg.id === assistantMessageId);
+          
+          if (messageIndex === -1) {
+            return [
+              ...currentMessages,
+              {
+                id: assistantMessageId,
+                content: fullStreamContent + '\n\n[出错: ' + (error instanceof Error ? error.message : '未知错误') + ']',
+                role: 'assistant',
+                timestamp: Date.now()
+              }
+            ];
           }
-          return msg;
-        });
-        
-        // 更新对话
-        if (currentConversation) {
-          const errorConversation: Conversation = {
-            ...currentConversation,
-            messages: errorMessages,
-            updatedAt: Date.now()
+          
+          // 创建一个新的消息数组
+          const errorMessages = [...currentMessages];
+          
+          // 更新AI回复消息的内容
+          errorMessages[messageIndex] = {
+            ...errorMessages[messageIndex],
+            content: fullStreamContent + '\n\n[出错: ' + (error instanceof Error ? error.message : '未知错误') + ']'
           };
           
-          updateConversation(errorConversation);
-        }
-        
-        return errorMessages;
-      });
-    } finally {
-      // 清除计时器
-      if (saveTimer) {
-        clearTimeout(saveTimer);
+          // 更新当前对话
+          if (currentConversation) {
+            const errorConversation: Conversation = {
+              ...currentConversation,
+              messages: errorMessages,
+              updatedAt: Date.now()
+            };
+            
+            // 保存到本地存储
+            saveCurrentConversation(errorConversation);
+            
+            // 更新对话列表
+            setConversations(currentConversations => {
+              const updatedConversations = currentConversations.map(conv => 
+                conv.id === errorConversation.id ? errorConversation : conv
+              );
+              
+              saveConversations(updatedConversations);
+              return updatedConversations;
+            });
+          }
+          
+          return errorMessages;
+        });
+      } else {
+        // 如果没有收到任何内容，则显示错误消息
+        setMessages(currentMessages => {
+          // 查找AI回复消息
+          const messageIndex = currentMessages.findIndex(msg => msg.id === assistantMessageId);
+          
+          if (messageIndex === -1) {
+            return [
+              ...currentMessages,
+              {
+                id: assistantMessageId,
+                content: '发送消息时出错: ' + (error instanceof Error ? error.message : '未知错误'),
+                role: 'assistant',
+                timestamp: Date.now()
+              }
+            ];
+          }
+          
+          // 创建一个新的消息数组
+          const errorMessages = [...currentMessages];
+          
+          // 更新AI回复消息的内容
+          errorMessages[messageIndex] = {
+            ...errorMessages[messageIndex],
+            content: '发送消息时出错: ' + (error instanceof Error ? error.message : '未知错误')
+          };
+          
+          return errorMessages;
+        });
       }
-      
+    } finally {
+      // 无论成功还是失败，都重置加载状态
       setIsLoading(false);
       setIsStreaming(false);
       setStreamingMessageId(null);
+      
+      // 确保计时器被清除
+      if (saveTimer) {
+        clearTimeout(saveTimer);
+      }
     }
   };
 
@@ -441,6 +527,82 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     
     setMessages([]);
     updateConversation(newConversation);
+  };
+
+  const switchConversation = (conversationId: string) => {
+    // 查找要切换到的对话
+    const targetConversation = conversations.find(conv => conv.id === conversationId);
+    if (!targetConversation) return;
+    
+    // 确保在切换对话前完成所有正在进行的操作
+    setIsLoading(false);
+    setIsStreaming(false);
+    setStreamingMessageId(null);
+    
+    // 更新当前对话
+    setCurrentConversation(targetConversation);
+    
+    // 确保消息列表被正确设置 - 使用深拷贝
+    console.log("切换到对话:", targetConversation.id, "消息数量:", targetConversation.messages.length);
+    const deepCopiedMessages = targetConversation.messages.map(msg => ({...msg}));
+    setMessages(deepCopiedMessages);
+    
+    // 保存到本地存储
+    saveCurrentConversation(targetConversation);
+  };
+
+  const renameConversation = (conversationId: string, newName: string) => {
+    if (!newName.trim()) return;
+    
+    // 更新对话列表
+    setConversations(currentConversations => {
+      const updatedConversations = currentConversations.map(conv => {
+        if (conv.id === conversationId) {
+          const updatedConversation = {
+            ...conv,
+            name: newName.trim(),
+            updatedAt: Date.now()
+          };
+          
+          // 如果是当前对话，也更新当前对话
+          if (currentConversation && currentConversation.id === conversationId) {
+            setCurrentConversation(updatedConversation);
+          }
+          
+          return updatedConversation;
+        }
+        return conv;
+      });
+      
+      // 保存到本地存储
+      saveConversations(updatedConversations);
+      return updatedConversations;
+    });
+  };
+
+  const handleDeleteConversation = (conversationId: string) => {
+    // 更新对话列表
+    setConversations(currentConversations => {
+      const updatedConversations = currentConversations.filter(conv => conv.id !== conversationId);
+      
+      // 如果删除的是当前对话，切换到另一个对话或创建新对话
+      if (currentConversation && currentConversation.id === conversationId) {
+        if (updatedConversations.length > 0) {
+          // 切换到列表中的第一个对话
+          const newCurrentConversation = updatedConversations[0];
+          setCurrentConversation(newCurrentConversation);
+          setMessages(newCurrentConversation.messages);
+          saveCurrentConversation(newCurrentConversation);
+        } else {
+          // 如果没有其他对话，创建新对话
+          createNewConversation();
+        }
+      }
+      
+      // 保存到本地存储
+      saveConversations(updatedConversations);
+      return updatedConversations;
+    });
   };
 
   return (
@@ -464,4 +626,4 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       {children}
     </ChatContext.Provider>
   );
-}; 
+};

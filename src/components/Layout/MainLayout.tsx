@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Layout, Typography, Tabs, Button } from 'antd';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Layout, Typography, Button } from 'antd';
 import { Resizable, ResizeCallbackData } from 'react-resizable';
 import { SettingOutlined } from '@ant-design/icons';
 import ChatWindow from '../Chat/ChatWindow';
@@ -11,7 +11,7 @@ import './MainLayout.css';
 
 const { Header, Content, Sider } = Layout;
 const { Title } = Typography;
-const { TabPane } = Tabs;
+// Tabs component is used but TabPane is not needed
 
 // 定义页面类型
 type PageType = 'chat' | 'settings';
@@ -37,16 +37,17 @@ const MainLayout: React.FC = () => {
   const [activePage, setActivePage] = useState<PageType>('chat');
 
   // 保存宽度到 localStorage
-  const saveWidths = () => {
+  // 使用 useCallback 记忆 saveWidths 函数
+  const saveWidths = useCallback(() => {
     localStorage.setItem('leftSiderWidth', leftSiderWidth.toString());
     localStorage.setItem('contentWidth', contentWidth.toString());
     localStorage.setItem('rightSiderWidth', rightSiderWidth.toString());
-  };
+  }, [leftSiderWidth, contentWidth, rightSiderWidth]);
 
-  // 当宽度变化时保存
+  // 移除 eslint-disable 注释，因为现在已经正确处理了依赖
   useEffect(() => {
     saveWidths();
-  }, [leftSiderWidth, contentWidth, rightSiderWidth]);
+  }, [leftSiderWidth, contentWidth, rightSiderWidth, saveWidths]);
 
   const onLeftSiderResize = (e: React.SyntheticEvent, { size }: ResizeCallbackData) => {
     setLeftSiderWidth(size.width);
@@ -188,4 +189,4 @@ const MainLayout: React.FC = () => {
   );
 };
 
-export default MainLayout; 
+export default MainLayout;

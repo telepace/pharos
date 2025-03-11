@@ -3,9 +3,7 @@ import { Input, Button, Space, Tag, Tooltip, Drawer } from 'antd';
 import { 
   SendOutlined, 
   ClearOutlined, 
-  SearchOutlined, 
-  AudioOutlined,
-  LinkOutlined
+  SearchOutlined
 } from '@ant-design/icons';
 import { useChatContext } from '../../contexts/ChatContext';
 import { usePromptContext } from '../../contexts/PromptContext';
@@ -130,4 +128,4 @@ ${results.slice(0, 3).map((result, index) => `${index + 1}. ${result.title}
   );
 };
 
-export default MessageInput; 
+export default MessageInput;

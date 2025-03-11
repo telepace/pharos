@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Card, Typography, Space, Button, Modal, Tooltip, Tag, Menu, Dropdown } from 'antd';
-import { EditOutlined, DeleteOutlined, CheckCircleOutlined, DisconnectOutlined, SendOutlined, MoreOutlined } from '@ant-design/icons';
+import { Card, Typography, Space, Button, Modal, Tooltip, Menu, Dropdown } from 'antd';
+import { EditOutlined, DeleteOutlined, SendOutlined, MoreOutlined } from '@ant-design/icons';
 import { Prompt, PromptType } from '../../types';
 import { usePromptContext } from '../../contexts/PromptContext';
 import { useChatContext } from '../../contexts/ChatContext';
@@ -26,16 +26,20 @@ const PromptItem: React.FC<PromptItemProps> = ({ prompt }) => {
     setActivePrompt(isActive ? null : prompt.id);
   };
   
+  // These handlers are now used through the menu click handler
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsEditModalVisible(true);
   };
   
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsDeleteModalVisible(true);
   };
   
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleRemove = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsRemoveModalVisible(true);
@@ -62,6 +66,7 @@ const PromptItem: React.FC<PromptItemProps> = ({ prompt }) => {
   };
   
   // 根据提示类型获取标签文本
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const getTypeTagText = () => {
     return prompt.type === PromptType.DIRECT ? '直接发送' : '系统提示';
   };

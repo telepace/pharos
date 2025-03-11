@@ -20,37 +20,77 @@ const Message: React.FC<MessageProps> = ({ message, observationId }) => {
   const isUser = message.role === 'user';
   const { isStreaming, streamingMessageId, currentConversation } = useChatContext();
   const messageRef = useRef<HTMLDivElement>(null);
+  
+  // 使用ref来存储消息内容，防止被React状态更新覆盖
+  const contentRef = useRef<string>(message.content || '');
   const [links, setLinks] = useState<{ url: string, startIndex: number, endIndex: number }[]>([]);
+  
+  // 使用一个强制更新的状态，当需要重新渲染时更新它
+  const [forceUpdate, setForceUpdate] = useState(0);
   
   // 检查当前消息是否正在流式输出
   const isCurrentlyStreaming = isStreaming && streamingMessageId === message.id;
   
-  // 当消息内容更新时，应用高亮动画
+  // 当消息内容更新时，更新contentRef并强制重新渲染
   useEffect(() => {
-    if (isCurrentlyStreaming && messageRef.current) {
-      messageRef.current.classList.add('message-highlight');
+    // 只有当消息内容不为空且与当前存储的内容不同时才更新
+    if (message.content !== undefined && message.content !== null && message.content !== contentRef.current) {
+      console.log(`消息[${message.id}]内容更新:`, 
+        `旧内容长度: ${contentRef.current.length}`, 
+        `新内容长度: ${message.content.length}`);
       
-      const timer = setTimeout(() => {
-        messageRef.current?.classList.remove('message-highlight');
-      }, 300);
+      // 更新ref中存储的内容
+      contentRef.current = message.content;
       
-      return () => clearTimeout(timer);
+      // 强制组件重新渲染
+      setForceUpdate(prev => prev + 1);
+      
+      // 应用高亮动画
+      if (isCurrentlyStreaming && messageRef.current) {
+        messageRef.current.classList.add('message-highlight');
+        
+        const timer = setTimeout(() => {
+          messageRef.current?.classList.remove('message-highlight');
+        }, 300);
+        
+        return () => clearTimeout(timer);
+      }
     }
-  }, [message.content, isCurrentlyStreaming]);
+  }, [message.content, isCurrentlyStreaming, message.id]);
   
   // 解析消息中的链接
   useEffect(() => {
-    if (!isCurrentlyStreaming && message.content) {
-      const detectedLinks = parseLinks(message.content);
-      setLinks(detectedLinks);
+    if (!isCurrentlyStreaming && contentRef.current) {
+      try {
+        const detectedLinks = parseLinks(contentRef.current);
+        setLinks(detectedLinks);
+      } catch (error) {
+        console.error("解析链接出错:", error);
+      }
     }
-  }, [message.content, isCurrentlyStreaming]);
+  }, [forceUpdate, isCurrentlyStreaming]);
   
   // 渲染消息内容，包括链接解析
   const renderContent = () => {
+    // 使用ref中存储的内容，而不是直接使用message.content
+    const content = contentRef.current;
+    
+    console.log(`渲染消息[${message.id}]:`, 
+      `内容长度: ${content.length}`, 
+      `原始内容长度: ${message.content?.length || 0}`, 
+      `角色: ${message.role}`,
+      `强制更新计数: ${forceUpdate}`);
+    
     return (
       <div style={{ margin: 0 }}>
-        <ReactMarkdown>{message.content}</ReactMarkdown>
+        {content ? (
+          <ReactMarkdown>{content}</ReactMarkdown>
+        ) : (
+          <span style={{color: 'red'}}>
+            消息内容为空 (ID: {message.id}, 角色: {message.role})
+          </span>
+        )}
+        
         {isCurrentlyStreaming && (
           <span className="typing-cursor"></span>
         )}
@@ -74,6 +114,7 @@ const Message: React.FC<MessageProps> = ({ message, observationId }) => {
     );
   };
   
+  // 确保消息组件始终渲染，即使在边缘情况下
   return (
     <div 
       style={{ 
@@ -81,6 +122,11 @@ const Message: React.FC<MessageProps> = ({ message, observationId }) => {
         marginBottom: 16,
         flexDirection: isUser ? 'row-reverse' : 'row'
       }}
+      data-message-id={message.id}
+      data-message-role={message.role}
+      data-message-timestamp={message.timestamp}
+      data-content-length={contentRef.current.length}
+      data-force-update={forceUpdate}
     >
       <Avatar 
         icon={isUser ? <UserOutlined /> : <RobotOutlined />} 
@@ -92,7 +138,7 @@ const Message: React.FC<MessageProps> = ({ message, observationId }) => {
       />
       <div
         ref={messageRef}
-        className={`message-bubble ${isCurrentlyStreaming ? 'streaming-message' : ''}`}
+        className={`message-bubble ${isCurrentlyStreaming ? 'streaming-message' : ''} ${message.role}`}
         style={{
           maxWidth: '70%',
           backgroundColor: isUser ? '#e6f7ff' : '#f6ffed',
@@ -116,8 +162,8 @@ const Message: React.FC<MessageProps> = ({ message, observationId }) => {
             </Text>
             
             {/* 为AI消息添加语音播放按钮 */}
-            {!isUser && !isCurrentlyStreaming && (
-              <VoicePlayer text={message.content} />
+            {!isUser && !isCurrentlyStreaming && contentRef.current && (
+              <VoicePlayer text={contentRef.current} />
             )}
           </Space>
           
