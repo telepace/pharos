@@ -1,24 +1,53 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Card, Spin, Empty, Button, message, Drawer, Typography, Switch, Divider } from 'antd';
-import { ReloadOutlined, SyncOutlined, BugOutlined } from '@ant-design/icons';
+import React, { useEffect, useRef, useState } from 'react';
+import { Card, Spin, Empty } from 'antd';
 import { useChatContext } from '../../contexts/ChatContext';
 import Message from './Message';
 import MessageInput from './MessageInput';
-import { Message as MessageType } from '../../types';
-
-const { Text, Title } = Typography;
 
 const ChatWindow: React.FC = () => {
   const { messages, isLoading, isStreaming, observationIds } = useChatContext();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const prevMessagesLengthRef = useRef(messages.length);
-  const hasScrolledDuringStreamRef = useRef(false);
-  const [localMessages, setLocalMessages] = useState<MessageType[]>([]);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [renderKey, setRenderKey] = useState(0); // 用于强制重新渲染
-  const [debugVisible, setDebugVisible] = useState(false);
-  const [showRawMessages, setShowRawMessages] = useState(false);
+  const shouldScrollRef = useRef(true);
+  const userScrolledRef = useRef(false);
+  const [localMessages, setLocalMessages] = useState<any[]>([]);
   
+  // 自动滚动到底部
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ 
+      behavior: 'auto',
+      block: 'end'
+    });
+  };
+
+  // 检查是否在底部（100px误差范围内）
+  const isAtBottom = () => {
+    const container = messagesContainerRef.current;
+    if (!container) return true;
+    
+    // 如果内容高度小于容器高度，说明没有滚动条，视为在底部
+    if (container.scrollHeight <= container.clientHeight) {
+      return true;
+    }
+    
+    return container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+  };
+
+  // 处理滚动事件
+  const handleScroll = () => {
+    // 记录用户是否在底部
+    shouldScrollRef.current = isAtBottom();
+    
+    // 只有在流式输出时且用户明确向上滚动时才标记为用户滚动
+    if (isStreaming) {
+      const container = messagesContainerRef.current;
+      if (container && container.scrollHeight - container.scrollTop - container.clientHeight > 150) {
+        userScrolledRef.current = true;
+      }
+    }
+  };
+
   // 当消息列表更新时，更新本地消息列表
   useEffect(() => {
     console.log("消息列表更新:", messages.length, "条消息");
@@ -37,7 +66,7 @@ const ChatWindow: React.FC = () => {
     const hasLocalAssistantMessage = localMessages.some(msg => msg.role === 'assistant');
     
     // 如果消息数量减少且没有AI消息，可能是AI消息被意外移除了
-    if (localMessages.length > messages.length && !hasAssistantMessage && hasLocalAssistantMessage) {
+    if ((localMessages.length > messages.length || !hasAssistantMessage) && hasLocalAssistantMessage) {
       console.warn("检测到AI消息可能被意外移除，保留本地消息列表");
       
       // 尝试合并消息列表，保留AI消息
@@ -46,17 +75,33 @@ const ChatWindow: React.FC = () => {
       // 找出本地列表中的AI消息
       const assistantMessages = localMessages.filter(msg => msg.role === 'assistant');
       
+      // 找出当前消息列表中的用户消息
+      const userMessages = messages.filter(msg => msg.role === 'user');
+      
       // 检查每条AI消息是否已存在于合并列表中
       assistantMessages.forEach(assistantMsg => {
         const exists = mergedMessages.some(msg => msg.id === assistantMsg.id);
         if (!exists) {
           console.log("添加丢失的AI消息回列表:", assistantMsg.id);
-          mergedMessages.push(assistantMsg);
+          
+          // 查找这条AI消息之前的用户消息
+          const prevUserMsgIndex = localMessages.findIndex(msg => msg.id === assistantMsg.id) - 1;
+          const prevUserMsg = prevUserMsgIndex >= 0 ? localMessages[prevUserMsgIndex] : null;
+          
+          // 如果找到了对应的用户消息，并且该用户消息在当前消息列表中
+          if (prevUserMsg && prevUserMsg.role === 'user' && 
+              userMessages.some(msg => msg.id === prevUserMsg.id)) {
+            mergedMessages.push(assistantMsg);
+          } else if (!prevUserMsg) {
+            // 如果没有找到对应的用户消息，也添加（可能是系统消息）
+            mergedMessages.push(assistantMsg);
+          }
         }
       });
       
       // 如果合并后的列表包含AI消息且与原始消息列表不同，则更新本地消息列表
-      if (mergedMessages.length > messages.length) {
+      if (mergedMessages.length > messages.length || 
+          (mergedMessages.some(msg => msg.role === 'assistant') && !hasAssistantMessage)) {
         console.log("使用合并后的消息列表:", mergedMessages.length, "条消息");
         
         // 按时间戳排序
@@ -82,247 +127,119 @@ const ChatWindow: React.FC = () => {
     const deepCopiedMessages = messages.map(msg => ({...msg}));
     setLocalMessages(deepCopiedMessages);
   }, [messages, localMessages]);
-  
-  // 监听恢复消息事件
+
+  // 添加滚动监听
   useEffect(() => {
-    const handleRestoreMessages = (event: any) => {
-      console.log("收到恢复消息事件");
-      if (event.detail && event.detail.messages) {
-        setLocalMessages(event.detail.messages);
-      }
-    };
-    
-    window.addEventListener('restoreMessages', handleRestoreMessages);
+    const container = messagesContainerRef.current;
+    if (container) {
+      container.addEventListener('scroll', handleScroll);
+    }
     
     return () => {
-      window.removeEventListener('restoreMessages', handleRestoreMessages);
-    };
-  }, []);
-  
-  // 自动滚动到底部
-  const scrollToBottom = useCallback(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, []);
-
-  // 只在消息数量增加时滚动到底部（新消息发送时）
-  useEffect(() => {
-    if (localMessages.length > prevMessagesLengthRef.current) {
-      scrollToBottom();
-    }
-    prevMessagesLengthRef.current = localMessages.length;
-  }, [localMessages, scrollToBottom]);
-  
-  // 处理流式输出时的滚动逻辑
-  useEffect(() => {
-    // 当流式输出开始时，重置滚动标记
-    if (isStreaming && !hasScrolledDuringStreamRef.current) {
-      // 检查最后一条消息是否至少有3行
-      const lastMessage = localMessages[localMessages.length - 1];
-      if (lastMessage && lastMessage.role === 'assistant') {
-        const lineCount = (lastMessage.content?.match(/\n/g) || []).length + 1;
-        
-        // 当达到至少3行且尚未滚动过时，执行一次滚动
-        if (lineCount >= 3 && !hasScrolledDuringStreamRef.current) {
-          scrollToBottom();
-          hasScrolledDuringStreamRef.current = true;
-        }
+      if (container) {
+        container.removeEventListener('scroll', handleScroll);
       }
+    };
+  }, [isStreaming]);
+
+  // 处理消息更新
+  useEffect(() => {
+    // 当消息数量增加时
+    if (messages.length > prevMessagesLengthRef.current) {
+      // 使用 requestAnimationFrame 确保在下一帧渲染后再检查
+      requestAnimationFrame(() => {
+        // 消息少于3条时总是滚动到底部
+        const messageCount = Math.ceil(messages.length / 2); // 计算对话轮次
+        if (messageCount < 3 || shouldScrollRef.current) {
+          scrollToBottom();
+        }
+      });
     }
     
-    // 流式输出结束时，重置标记并滚动到底部
-    if (!isStreaming && hasScrolledDuringStreamRef.current) {
-      hasScrolledDuringStreamRef.current = false;
+    prevMessagesLengthRef.current = messages.length;
+  }, [messages]);
+  
+  // 处理流式输出时的滚动
+  useEffect(() => {
+    // 流式开始时重置用户滚动标记
+    if (isStreaming) {
+      userScrolledRef.current = false;
+      
+      // 初始滚动到底部
       scrollToBottom();
+      
+      // 使用 requestAnimationFrame 而不是 setInterval 来实现更平滑的滚动
+      let animationFrameId: number;
+      
+      const scrollLoop = () => {
+        if (isStreaming && !userScrolledRef.current) {
+          scrollToBottom();
+          animationFrameId = requestAnimationFrame(scrollLoop);
+        }
+      };
+      
+      // 启动滚动循环
+      animationFrameId = requestAnimationFrame(scrollLoop);
+      
+      return () => {
+        // 清理
+        cancelAnimationFrame(animationFrameId);
+        // 流式输出结束时重置用户滚动标记
+        setTimeout(() => {
+          userScrolledRef.current = false;
+        }, 500);
+      };
     }
-  }, [isStreaming, localMessages, scrollToBottom]);
-  
-  // 强制刷新消息列表
-  const forceRefresh = useCallback(() => {
-    console.log("强制刷新消息列表");
-    setIsRefreshing(true);
-    
-    // 增加渲染键，强制整个组件重新渲染
-    setRenderKey(prev => prev + 1);
-    
-    // 先清空本地消息列表，然后重新设置
-    setTimeout(() => {
-      const deepCopiedMessages = messages.map(msg => ({...msg}));
-      setLocalMessages(deepCopiedMessages);
-      setIsRefreshing(false);
-      scrollToBottom();
-      message.success('消息列表已刷新');
-    }, 100);
-  }, [messages, scrollToBottom]);
-  
-  // 渲染单个消息
-  const renderMessage = useCallback((msg: MessageType, index: number) => {
-    return (
-      <Message 
-        key={`${msg.id}-${index}-${renderKey}`} 
-        message={msg} 
-        observationId={msg.role === 'assistant' ? observationIds[msg.id] : undefined}
-      />
-    );
-  }, [observationIds, renderKey]);
-  
-  // 渲染原始消息（用于调试）
-  const renderRawMessage = useCallback((msg: MessageType, index: number) => {
-    return (
-      <div 
-        key={`raw-${msg.id}-${index}`}
-        style={{ 
-          padding: '10px', 
-          margin: '5px 0', 
-          border: '1px solid #d9d9d9',
-          borderRadius: '4px',
-          backgroundColor: msg.role === 'user' ? '#e6f7ff' : '#f6ffed'
-        }}
-      >
-        <div><Text strong>ID:</Text> {msg.id}</div>
-        <div><Text strong>角色:</Text> {msg.role}</div>
-        <div><Text strong>时间:</Text> {new Date(msg.timestamp).toLocaleString()}</div>
-        <div><Text strong>内容长度:</Text> {msg.content?.length || 0}</div>
-        <div style={{ marginTop: '5px' }}>
-          <Text strong>内容:</Text>
-          <div style={{ 
-            maxHeight: '100px', 
-            overflow: 'auto', 
-            padding: '5px', 
-            backgroundColor: '#f5f5f5',
-            borderRadius: '2px',
-            marginTop: '5px',
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-all'
-          }}>
-            {msg.content || '空内容'}
-          </div>
-        </div>
-      </div>
-    );
-  }, []);
-  
-  // 切换调试抽屉
-  const toggleDebug = useCallback(() => {
-    setDebugVisible(prev => !prev);
-  }, []);
+  }, [isStreaming]);
   
   return (
-    <>
-      <Card 
-        key={`chat-window-${renderKey}`}
-        title={
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>聊天窗口</span>
-            <div>
-              <Button 
-                icon={<BugOutlined />}
-                size="small"
-                onClick={toggleDebug}
-                style={{ marginRight: '8px' }}
-                title="调试工具"
-              />
-              <Button 
-                icon={isRefreshing ? <SyncOutlined spin /> : <ReloadOutlined />} 
-                size="small" 
-                onClick={forceRefresh}
-                title="刷新消息列表"
-                disabled={isRefreshing}
-              />
-            </div>
-          </div>
-        }
-        bordered={false}
-        style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
-        bodyStyle={{ 
+    <Card 
+      title="聊天窗口" 
+      bordered={false}
+      style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+      bodyStyle={{ 
+        flex: 1, 
+        display: 'flex', 
+        flexDirection: 'column',
+        padding: 0,
+        overflow: 'hidden'
+      }}
+    >
+      <div 
+        ref={messagesContainerRef}
+        style={{ 
           flex: 1, 
-          display: 'flex', 
+          overflowY: 'auto', 
+          padding: '16px',
+          display: 'flex',
           flexDirection: 'column',
-          padding: 0,
-          overflow: 'hidden'
+          scrollBehavior: 'smooth',
+          WebkitOverflowScrolling: 'touch'
         }}
       >
-        <div 
-          style={{ 
-            flex: 1, 
-            overflowY: 'auto', 
-            padding: '16px',
-            display: 'flex',
-            flexDirection: 'column'
-          }}
-        >
-          {localMessages.length === 0 ? (
-            <Empty 
-              description="暂无消息" 
-              style={{ margin: 'auto' }}
-            />
-          ) : (
-            <>
-              {localMessages.map(renderMessage)}
-              {localMessages.length > 0 && (
-                <div style={{ fontSize: '12px', color: '#999', textAlign: 'center', margin: '10px 0' }}>
-                  共 {localMessages.length} 条消息
-                </div>
-              )}
-            </>
-          )}
-          {isLoading && !isStreaming && (
-            <div style={{ textAlign: 'center', padding: '16px' }}>
-              <Spin tip="AI正在思考..." />
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-        <MessageInput />
-      </Card>
-      
-      {/* 调试抽屉 */}
-      <Drawer
-        title="消息调试工具"
-        placement="right"
-        onClose={() => setDebugVisible(false)}
-        open={debugVisible}
-        width={500}
-      >
-        <div style={{ marginBottom: '16px' }}>
-          <Switch 
-            checked={showRawMessages} 
-            onChange={setShowRawMessages} 
-            style={{ marginRight: '8px' }}
+        {messages.length === 0 ? (
+          <Empty 
+            description="暂无消息" 
+            style={{ margin: 'auto' }}
           />
-          <Text>显示原始消息数据</Text>
-        </div>
-        
-        <Button 
-          type="primary" 
-          onClick={forceRefresh}
-          style={{ marginBottom: '16px' }}
-        >
-          强制刷新消息列表
-        </Button>
-        
-        <Divider />
-        
-        <div>
-          <Title level={5}>状态信息</Title>
-          <div><Text strong>原始消息数量:</Text> {messages.length}</div>
-          <div><Text strong>本地消息数量:</Text> {localMessages.length}</div>
-          <div><Text strong>正在加载:</Text> {isLoading ? '是' : '否'}</div>
-          <div><Text strong>正在流式输出:</Text> {isStreaming ? '是' : '否'}</div>
-          <div><Text strong>渲染键:</Text> {renderKey}</div>
-        </div>
-        
-        <Divider />
-        
-        {showRawMessages && (
-          <div>
-            <Title level={5}>原始消息列表</Title>
-            {messages.map(renderRawMessage)}
+        ) : (
+          messages.map(message => (
+            <Message 
+              key={message.id} 
+              message={message} 
+              observationId={message.role === 'assistant' ? observationIds[message.id] : undefined}
+            />
+          ))
+        )}
+        {isLoading && !isStreaming && (
+          <div style={{ textAlign: 'center', padding: '16px' }}>
+            <Spin tip="AI正在思考..." />
           </div>
         )}
-      </Drawer>
-    </>
+        <div ref={messagesEndRef} />
+      </div>
+      <MessageInput />
+    </Card>
   );
 };
 

@@ -112,16 +112,24 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         const hasAssistantMessage = restoredMessages.some((msg: Message) => msg.role === 'assistant');
         const hasCurrentAssistantMessage = messages.some(msg => msg.role === 'assistant');
         
-        // 只有当恢复的消息包含AI消息且当前消息不包含AI消息时才恢复
-        if (hasAssistantMessage && !hasCurrentAssistantMessage && restoredMessages.length > messages.length) {
+        // 只有当恢复的消息包含AI消息且当前消息不包含AI消息，或者恢复的消息数量更多时才恢复
+        if ((hasAssistantMessage && !hasCurrentAssistantMessage) || restoredMessages.length > messages.length) {
           console.log("从ChatWindow恢复消息:", restoredMessages.length, "条");
-          setMessages(restoredMessages);
+          
+          // 创建深拷贝以避免引用问题
+          const deepCopiedMessages = restoredMessages.map((msg: Message) => ({...msg}));
+          
+          // 更新备份
+          messagesBackupRef.current = deepCopiedMessages;
+          
+          // 更新消息列表
+          setMessages(deepCopiedMessages);
           
           // 如果有当前对话，也更新对话中的消息
           if (currentConversation) {
             const restoredConversation: Conversation = {
               ...currentConversation,
-              messages: restoredMessages,
+              messages: deepCopiedMessages,
               updatedAt: Date.now()
             };
             
@@ -256,7 +264,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
               if (nextMsg && nextMsg.role === 'assistant') {
                 // 确保这个AI消息还没有被添加
                 if (!restoredMessages.some(msg => msg.id === nextMsg.id)) {
-                  restoredMessages.push(nextMsg);
+                  restoredMessages.push({...nextMsg});
                 }
               }
             }
@@ -265,7 +273,18 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           // 如果还有其他AI消息没有被添加，添加它们
           assistantMessages.forEach(aiMsg => {
             if (!restoredMessages.some(msg => msg.id === aiMsg.id)) {
-              restoredMessages.push(aiMsg);
+              // 检查是否有对应的用户消息
+              const aiIndex = messagesBackupRef.current.findIndex(msg => msg.id === aiMsg.id);
+              if (aiIndex > 0) {
+                const prevMsg = messagesBackupRef.current[aiIndex - 1];
+                // 只有当前一条消息是用户消息，且该用户消息在恢复的消息列表中时，才添加AI消息
+                if (prevMsg.role === 'user' && restoredMessages.some(msg => msg.id === prevMsg.id)) {
+                  restoredMessages.push({...aiMsg});
+                }
+              } else {
+                // 如果没有前一条消息，也添加（可能是系统消息）
+                restoredMessages.push({...aiMsg});
+              }
             }
           });
           
@@ -274,32 +293,38 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           
           console.log("恢复后的消息列表:", restoredMessages.length, "条");
           
-          // 更新消息列表
-          setMessages(restoredMessages);
+          // 检查恢复后的消息列表是否包含AI消息
+          const hasRestoredAssistantMessage = restoredMessages.some(msg => msg.role === 'assistant');
           
-          // 如果有当前对话，也更新对话中的消息
-          if (currentConversation) {
-            const restoredConversation: Conversation = {
-              ...currentConversation,
-              messages: restoredMessages,
-              updatedAt: Date.now()
-            };
+          // 只有当恢复后的消息列表包含AI消息且与当前消息列表不同时，才更新消息列表
+          if (hasRestoredAssistantMessage && restoredMessages.length > messages.length) {
+            // 更新消息列表
+            setMessages(restoredMessages);
             
-            // 保存到本地存储
-            saveCurrentConversation(restoredConversation);
-            
-            // 更新对话列表
-            setConversations(currentConversations => {
-              const updatedConversations = currentConversations.map(conv => 
-                conv.id === restoredConversation.id ? restoredConversation : conv
-              );
+            // 如果有当前对话，也更新对话中的消息
+            if (currentConversation) {
+              const restoredConversation: Conversation = {
+                ...currentConversation,
+                messages: restoredMessages,
+                updatedAt: Date.now()
+              };
               
-              saveConversations(updatedConversations);
-              return updatedConversations;
-            });
+              // 保存到本地存储
+              saveCurrentConversation(restoredConversation);
+              
+              // 更新对话列表
+              setConversations(currentConversations => {
+                const updatedConversations = currentConversations.map(conv => 
+                  conv.id === restoredConversation.id ? restoredConversation : conv
+                );
+                
+                saveConversations(updatedConversations);
+                return updatedConversations;
+              });
+            }
+            
+            return;
           }
-          
-          return;
         }
       }
       
@@ -313,6 +338,10 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   const sendMessage = async (content: string) => {
     if (!content.trim() || !currentConversation) return;
     
+    // 在发送新消息前，先备份当前消息列表
+    const messagesBeforeSend = [...messages];
+    const hasAssistantMessageBeforeSend = messagesBeforeSend.some(msg => msg.role === 'assistant');
+    
     // 创建用户消息
     const userMessage: Message = {
       id: uuidv4(),
@@ -321,8 +350,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       timestamp: Date.now()
     };
     
-    // 更新消息列表
-    const updatedMessages = [...messages, userMessage];
+    // 更新消息列表 - 确保保留之前的所有消息
+    const updatedMessages = [...messagesBeforeSend, userMessage];
     setMessages(updatedMessages);
     
     // 更新对话
@@ -349,6 +378,22 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     
     // 将空消息添加到消息列表 - 使用函数式更新确保基于最新状态
     setMessages(prevMessages => {
+      // 检查是否有消息丢失
+      const hasLostMessages = hasAssistantMessageBeforeSend && 
+                             !prevMessages.some(msg => msg.role === 'assistant' && 
+                                                      messagesBeforeSend.some(m => m.id === msg.id));
+      
+      // 如果检测到消息丢失，使用备份恢复
+      if (hasLostMessages) {
+        console.warn("检测到在添加新消息前有AI消息丢失，使用备份恢复");
+        // 合并备份消息和新消息
+        const restoredMessages = [...messagesBeforeSend, userMessage];
+        // 更新备份
+        messagesBackupRef.current = restoredMessages.map(msg => ({...msg}));
+        // 添加新的AI消息
+        return [...restoredMessages, assistantMessage];
+      }
+      
       const messagesWithEmptyResponse = [...prevMessages, assistantMessage];
       console.log("添加空AI消息:", assistantMessageId, "当前消息数:", messagesWithEmptyResponse.length);
       
@@ -386,6 +431,86 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           
           if (messageIndex === -1) {
             console.warn("警告: 流式更新时未找到AI消息，重新添加", assistantMessageId);
+            
+            // 检查是否有丢失的AI消息
+            const hasLostAssistantMessages = messagesBackupRef.current.some(msg => 
+              msg.role === 'assistant' && !currentMessages.some(m => m.id === msg.id)
+            );
+            
+            // 如果有丢失的AI消息，从备份中恢复
+            if (hasLostAssistantMessages) {
+              console.log("流式响应完成时，从备份中恢复丢失的AI消息");
+              
+              // 合并当前消息和备份中的AI消息
+              const mergedMessages = [...currentMessages];
+              
+              // 添加丢失的AI消息
+              messagesBackupRef.current.forEach(backupMsg => {
+                if (backupMsg.role === 'assistant' && !mergedMessages.some(msg => msg.id === backupMsg.id)) {
+                  mergedMessages.push({...backupMsg});
+                }
+              });
+              
+              // 检查是否已经有相同内容的AI消息（避免重复）
+              const existingAIMessage = mergedMessages.find(msg => 
+                msg.role === 'assistant' && msg.content === (fullStreamContent || response.content)
+              );
+              
+              if (existingAIMessage) {
+                console.log("已存在相同内容的AI消息，不重复添加");
+                
+                // 按时间戳排序
+                mergedMessages.sort((a, b) => a.timestamp - b.timestamp);
+                
+                // 更新备份
+                messagesBackupRef.current = mergedMessages.map(msg => ({...msg}));
+                
+                return mergedMessages;
+              }
+              
+              // 添加当前的AI消息
+              if (!mergedMessages.some(msg => msg.id === assistantMessageId)) {
+                mergedMessages.push({
+                  id: assistantMessageId,
+                  content: fullStreamContent || response.content,
+                  role: 'assistant' as const,
+                  timestamp: Date.now()
+                });
+              }
+              
+              // 按时间戳排序
+              mergedMessages.sort((a, b) => a.timestamp - b.timestamp);
+              
+              console.log("流式响应完成，恢复后的消息数:", mergedMessages.length);
+              
+              // 更新备份
+              messagesBackupRef.current = mergedMessages.map(msg => ({...msg}));
+              
+              // 更新当前对话
+              if (currentConversation) {
+                const finalConversation: Conversation = {
+                  ...currentConversation,
+                  messages: mergedMessages,
+                  updatedAt: Date.now()
+                };
+                
+                // 保存到本地存储
+                saveCurrentConversation(finalConversation);
+                
+                // 更新对话列表
+                setConversations(currentConversations => {
+                  const updatedConversations = currentConversations.map(conv => 
+                    conv.id === finalConversation.id ? finalConversation : conv
+                  );
+                  
+                  saveConversations(updatedConversations);
+                  return updatedConversations;
+                });
+              }
+              
+              return mergedMessages;
+            }
+            
             // 检查是否有重复的用户消息
             const userMessages = currentMessages.filter(msg => msg.role === 'user');
             const uniqueUserMessages = userMessages.filter((msg, index, self) => 
@@ -514,6 +639,85 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         
         if (messageIndex === -1) {
           console.warn("警告: 流式响应完成时未找到AI消息，重新添加");
+          
+          // 检查是否有丢失的AI消息
+          const hasLostAssistantMessages = messagesBackupRef.current.some(msg => 
+            msg.role === 'assistant' && !currentMessages.some(m => m.id === msg.id)
+          );
+          
+          // 如果有丢失的AI消息，从备份中恢复
+          if (hasLostAssistantMessages) {
+            console.log("流式响应完成时，从备份中恢复丢失的AI消息");
+            
+            // 合并当前消息和备份中的AI消息
+            const mergedMessages = [...currentMessages];
+            
+            // 添加丢失的AI消息
+            messagesBackupRef.current.forEach(backupMsg => {
+              if (backupMsg.role === 'assistant' && !mergedMessages.some(msg => msg.id === backupMsg.id)) {
+                mergedMessages.push({...backupMsg});
+              }
+            });
+            
+            // 检查是否已经有相同内容的AI消息（避免重复）
+            const existingAIMessage = mergedMessages.find(msg => 
+              msg.role === 'assistant' && msg.content === (fullStreamContent || response.content)
+            );
+            
+            if (existingAIMessage) {
+              console.log("已存在相同内容的AI消息，不重复添加");
+              
+              // 按时间戳排序
+              mergedMessages.sort((a, b) => a.timestamp - b.timestamp);
+              
+              // 更新备份
+              messagesBackupRef.current = mergedMessages.map(msg => ({...msg}));
+              
+              return mergedMessages;
+            }
+            
+            // 添加当前的AI消息
+            if (!mergedMessages.some(msg => msg.id === assistantMessageId)) {
+              mergedMessages.push({
+                id: assistantMessageId,
+                content: fullStreamContent || response.content,
+                role: 'assistant' as const,
+                timestamp: Date.now()
+              });
+            }
+            
+            // 按时间戳排序
+            mergedMessages.sort((a, b) => a.timestamp - b.timestamp);
+            
+            console.log("流式响应完成，恢复后的消息数:", mergedMessages.length);
+            
+            // 更新备份
+            messagesBackupRef.current = mergedMessages.map(msg => ({...msg}));
+            
+            // 更新当前对话
+            if (currentConversation) {
+              const finalConversation: Conversation = {
+                ...currentConversation,
+                messages: mergedMessages,
+                updatedAt: Date.now()
+              };
+              
+              // 保存到本地存储
+              saveCurrentConversation(finalConversation);
+              
+              // 更新对话列表
+              setConversations(currentConversations => {
+                const updatedConversations = currentConversations.map(conv => 
+                  conv.id === finalConversation.id ? finalConversation : conv
+                );
+                
+                saveConversations(updatedConversations);
+                return updatedConversations;
+              });
+            }
+            
+            return mergedMessages;
+          }
           
           // 检查是否已经有相同内容的AI消息（避免重复）
           const existingAIMessage = currentMessages.find(msg => 
@@ -701,7 +905,66 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       // 最后检查一次消息列表中是否包含AI消息
       setMessages(currentMessages => {
         const hasAssistantMessage = currentMessages.some(msg => msg.role === 'assistant');
+        const hasBackupAssistantMessage = messagesBackupRef.current.some(msg => msg.role === 'assistant');
         
+        // 如果当前消息列表没有AI消息，但备份中有，则从备份中恢复
+        if (!hasAssistantMessage && hasBackupAssistantMessage) {
+          console.warn("最终检查: 消息列表中没有AI消息，从备份中恢复");
+          
+          // 合并当前消息和备份中的AI消息
+          const mergedMessages = [...currentMessages];
+          
+          // 添加丢失的AI消息
+          messagesBackupRef.current.forEach(backupMsg => {
+            if (backupMsg.role === 'assistant' && !mergedMessages.some(msg => msg.id === backupMsg.id)) {
+              mergedMessages.push({...backupMsg});
+            }
+          });
+          
+          // 如果还没有添加当前的AI消息且有内容，则添加
+          if (fullStreamContent && !mergedMessages.some(msg => msg.id === assistantMessageId)) {
+            mergedMessages.push({
+              id: assistantMessageId,
+              content: fullStreamContent,
+              role: 'assistant' as const,
+              timestamp: Date.now()
+            });
+          }
+          
+          // 按时间戳排序
+          mergedMessages.sort((a, b) => a.timestamp - b.timestamp);
+          
+          console.log("最终检查: 恢复后的消息数:", mergedMessages.length);
+          
+          // 更新备份
+          messagesBackupRef.current = mergedMessages.map(msg => ({...msg}));
+          
+          // 更新当前对话
+          if (currentConversation) {
+            const finalConversation: Conversation = {
+              ...currentConversation,
+              messages: mergedMessages,
+              updatedAt: Date.now()
+            };
+            
+            // 保存到本地存储
+            saveCurrentConversation(finalConversation);
+            
+            // 更新对话列表
+            setConversations(currentConversations => {
+              const updatedConversations = currentConversations.map(conv => 
+                conv.id === finalConversation.id ? finalConversation : conv
+              );
+              
+              saveConversations(updatedConversations);
+              return updatedConversations;
+            });
+          }
+          
+          return mergedMessages;
+        }
+        
+        // 如果没有AI消息且有流式内容，添加一个新的AI消息
         if (!hasAssistantMessage && fullStreamContent) {
           console.warn("最终检查: 消息列表中没有AI消息，添加一个");
           
