@@ -8,6 +8,7 @@ import FeedbackButtons from '../FeedbackButtons';
 import VoicePlayer from './VoicePlayer';
 import LinkPreview from './LinkPreview';
 import { parseLinks } from '../../utils/messageUtils';
+import { PharosIcon } from '../icons/PharosIcon';
 
 const { Text } = Typography;
 
@@ -26,7 +27,7 @@ const Message: React.FC<MessageProps> = ({ message, observationId }) => {
   const isCurrentlyStreaming = isStreaming && streamingMessageId === message.id;
   
   // 当消息内容更新时，应用高亮动画
-  useEffect(() => {
+  /* useEffect(() => {
     if (isCurrentlyStreaming && messageRef.current) {
       messageRef.current.classList.add('message-highlight');
       
@@ -36,7 +37,7 @@ const Message: React.FC<MessageProps> = ({ message, observationId }) => {
       
       return () => clearTimeout(timer);
     }
-  }, [message.content, isCurrentlyStreaming]);
+  }, [message.content, isCurrentlyStreaming]); */
   
   // 解析消息中的链接
   useEffect(() => {
@@ -83,21 +84,18 @@ const Message: React.FC<MessageProps> = ({ message, observationId }) => {
       }}
     >
       <Avatar 
-        icon={isUser ? <UserOutlined /> : <RobotOutlined />} 
+        icon={isUser ? <UserOutlined style={{ color: 'transparent' }} /> : <PharosIcon />} 
         style={{ 
-          backgroundColor: isUser ? '#1890ff' : '#52c41a',
+          backgroundColor: isUser ? 'transparent' : 'transparent',
           marginLeft: isUser ? 12 : 0,
-          marginRight: isUser ? 0 : 12
+          marginRight: isUser ? 0 : 12,
         }}
       />
       <div
         ref={messageRef}
         className={`message-bubble ${isCurrentlyStreaming ? 'streaming-message' : ''}`}
         style={{
-          maxWidth: '70%',
-          backgroundColor: isUser ? '#e6f7ff' : '#f6ffed',
-          padding: '8px 12px',
-          borderRadius: 8,
+          backgroundColor: isUser ? '#E7E6E4' : '#fff',
           position: 'relative',
           transition: 'background-color 0.3s ease'
         }}
@@ -111,14 +109,18 @@ const Message: React.FC<MessageProps> = ({ message, observationId }) => {
           marginTop: 8 
         }}>
           <Space size="small">
+            {/* 暂时隐藏时间戳
             <Text type="secondary" style={{ fontSize: 12 }}>
               {new Date(message.timestamp).toLocaleTimeString()}
             </Text>
+            */}
             
-            {/* 为AI消息添加语音播放按钮 */}
-            {!isUser && !isCurrentlyStreaming && (
-              <VoicePlayer text={message.content} />
-            )}
+             {/* 语音播放按钮（已隐藏） */}
+             {/* 
+             {!isUser && !isCurrentlyStreaming && (
+               <VoicePlayer text={message.content} />
+             )} 
+             */}
           </Space>
           
           {/* 只为AI消息添加反馈按钮，且不在流式输出时显示 */}

@@ -34,12 +34,14 @@ code {
 
 /* 聊天消息气泡样式 */
 .message-bubble {
-  max-width: 70%;
-  padding: 8px 12px;
+  max-width: 80%;
+  padding: 2px 20px;
   border-radius: 8px;
   position: relative;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border: 1.5px solid #000;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 1); 
   transition: all 0.3s ease;
+  margin-bottom: 8px;  
 }
 
 .user-message {
@@ -48,7 +50,7 @@ code {
 }
 
 .assistant-message {
-  background-color: #f6ffed;
+  background-color: #fff;
 }
 
 /* 场景选择器样式 */
@@ -242,14 +244,14 @@ body.dark-theme {
 }
 
 /* 流式消息样式 */
-.streaming-message {
+/*.streaming-message {
   border-left: 3px solid #1890ff;
-}
+} */
 
 /* 消息高亮动画 */
-.message-highlight {
+/*.message-highlight {
   animation: highlight 0.3s ease;
-}
+} */
 
 @keyframes highlight {
   0% {
@@ -338,4 +340,4 @@ body.dark-theme {
   .message-bubble {
     max-width: 90%;
   }
-} 
+}

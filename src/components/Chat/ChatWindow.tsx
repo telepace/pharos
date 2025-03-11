@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Card, Spin, Empty } from 'antd';
 import { useChatContext } from '../../contexts/ChatContext';
 import Message from './Message';
@@ -7,6 +7,7 @@ import MessageInput from './MessageInput';
 const ChatWindow: React.FC = () => {
   const { messages, isLoading, isStreaming, observationIds } = useChatContext();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const prevMessagesLengthRef = useRef(messages.length);
   const hasScrolledDuringStreamRef = useRef(false);
   
@@ -15,10 +16,23 @@ const ChatWindow: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // 只在消息数量增加时滚动到底部（新消息发送时）
+  // 检查用户是否在消息底部附近
+  const isNearBottom = () => {
+    const container = messagesContainerRef.current;
+    if (!container) return true;
+    
+    // 判断滚动位置是否接近底部（20px误差范围内）
+    const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 20;
+    return isAtBottom;
+  };
+
+  // 只在消息数量增加且用户在底部时滚动到底部
   useEffect(() => {
     if (messages.length > prevMessagesLengthRef.current) {
-      scrollToBottom();
+      // 只有当用户在底部附近时才自动滚动
+      if (isNearBottom()) {
+        scrollToBottom();
+      }
     }
     prevMessagesLengthRef.current = messages.length;
   }, [messages]);
@@ -27,9 +41,9 @@ const ChatWindow: React.FC = () => {
   useEffect(() => {
     // 当流式输出开始时，重置滚动标记
     if (isStreaming && !hasScrolledDuringStreamRef.current) {
-      // 检查最后一条消息是否至少有3行
+      // 检查最后一条消息是否至少有3行，且用户在底部附近
       const lastMessage = messages[messages.length - 1];
-      if (lastMessage && lastMessage.role === 'assistant') {
+      if (lastMessage && lastMessage.role === 'assistant' && isNearBottom()) {
         const lineCount = (lastMessage.content.match(/\n/g) || []).length + 1;
         
         // 当达到至少3行且尚未滚动过时，执行一次滚动
@@ -60,6 +74,7 @@ const ChatWindow: React.FC = () => {
       }}
     >
       <div 
+        ref={messagesContainerRef}
         style={{ 
           flex: 1, 
           overflowY: 'auto', 
