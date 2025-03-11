@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Typography, Space, Button, Modal, Tooltip, Menu, Dropdown } from 'antd';
+import { Card, Typography, Space, Button, Modal, Tooltip, Dropdown } from 'antd';
 import { EditOutlined, DeleteOutlined, SendOutlined, MoreOutlined } from '@ant-design/icons';
 import { Prompt, PromptType } from '../../types';
 import { usePromptContext } from '../../contexts/PromptContext';
@@ -83,19 +83,24 @@ const PromptItem: React.FC<PromptItemProps> = ({ prompt }) => {
   };
 
   // 下拉菜单选项
-  const menu = (
-    <Menu onClick={handleMenuClick}>
-      <Menu.Item key="send" icon={<SendOutlined />}>
-        直接发送
-      </Menu.Item>
-      <Menu.Item key="edit" icon={<EditOutlined />}>
-        编辑
-      </Menu.Item>
-      <Menu.Item key="delete" icon={<DeleteOutlined />} danger>
-        删除
-      </Menu.Item>
-    </Menu>
-  );
+  const menuItems = [
+    {
+      key: 'send',
+      icon: <SendOutlined />,
+      label: '直接发送'
+    },
+    {
+      key: 'edit',
+      icon: <EditOutlined />,
+      label: '编辑'
+    },
+    {
+      key: 'delete',
+      icon: <DeleteOutlined />,
+      label: '删除',
+      danger: true
+    }
+  ];
   
   return (
     <>
@@ -138,7 +143,14 @@ const PromptItem: React.FC<PromptItemProps> = ({ prompt }) => {
                 onClick={handleSendDirectly}
               />
             </Tooltip>
-            <Dropdown overlay={menu} trigger={['click']} placement="bottomRight">
+            <Dropdown 
+              menu={{ 
+                items: menuItems, 
+                onClick: handleMenuClick 
+              }} 
+              trigger={['click']} 
+              placement="bottomRight"
+            >
               <Button 
                 type="text" 
                 icon={<MoreOutlined />} 

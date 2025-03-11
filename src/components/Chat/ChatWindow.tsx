@@ -32,10 +32,19 @@ const ChatWindow: React.FC = () => {
         `内容前20字符: ${msg.content ? msg.content.substring(0, 20) + '...' : '空内容'}`);
     });
     
+    // 检查是否有AI消息
+    const hasAssistantMessage = messages.some(msg => msg.role === 'assistant');
+    
+    // 如果消息数量减少且没有AI消息，可能是AI消息被意外移除了
+    if (localMessages.length > messages.length && !hasAssistantMessage && localMessages.some(msg => msg.role === 'assistant')) {
+      console.warn("检测到AI消息可能被意外移除，保留本地消息列表");
+      return; // 不更新本地消息列表，保留当前状态
+    }
+    
     // 使用深拷贝确保本地消息列表是独立的
     const deepCopiedMessages = messages.map(msg => ({...msg}));
     setLocalMessages(deepCopiedMessages);
-  }, [messages]);
+  }, [messages, localMessages]);
   
   // 自动滚动到底部
   const scrollToBottom = useCallback(() => {

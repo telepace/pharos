@@ -3,6 +3,8 @@ import { Avatar, Typography, Space, Tooltip } from 'antd';
 import { UserOutlined, RobotOutlined, LinkOutlined } from '@ant-design/icons';
 import { Message as MessageType } from '../../types';
 import ReactMarkdown from 'react-markdown';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { useChatContext } from '../../contexts/ChatContext';
 import FeedbackButtons from '../FeedbackButtons';
 import VoicePlayer from './VoicePlayer';
@@ -35,10 +37,6 @@ const Message: React.FC<MessageProps> = ({ message, observationId }) => {
   useEffect(() => {
     // 只有当消息内容不为空且与当前存储的内容不同时才更新
     if (message.content !== undefined && message.content !== null && message.content !== contentRef.current) {
-      console.log(`消息[${message.id}]内容更新:`, 
-        `旧内容长度: ${contentRef.current.length}`, 
-        `新内容长度: ${message.content.length}`);
-      
       // 更新ref中存储的内容
       contentRef.current = message.content;
       
@@ -75,20 +73,43 @@ const Message: React.FC<MessageProps> = ({ message, observationId }) => {
     // 使用ref中存储的内容，而不是直接使用message.content
     const content = contentRef.current;
     
-    console.log(`渲染消息[${message.id}]:`, 
-      `内容长度: ${content.length}`, 
-      `原始内容长度: ${message.content?.length || 0}`, 
-      `角色: ${message.role}`,
-      `强制更新计数: ${forceUpdate}`);
+    // 确保内容不为undefined或null
+    const safeContent = content || '';
     
     return (
       <div style={{ margin: 0 }}>
-        {content ? (
-          <ReactMarkdown>{content}</ReactMarkdown>
+        {safeContent ? (
+          <ReactMarkdown
+            components={{
+              code({node, inline, className, children, ...props}: any) {
+                const match = /language-(\w+)/.exec(className || '');
+                return !inline && match ? (
+                  <SyntaxHighlighter
+                    style={tomorrow}
+                    language={match[1]}
+                    PreTag="div"
+                    {...props}
+                  >
+                    {String(children).replace(/\n$/, '')}
+                  </SyntaxHighlighter>
+                ) : (
+                  <code className={className} {...props}>
+                    {children}
+                  </code>
+                );
+              }
+            }}
+          >
+            {safeContent}
+          </ReactMarkdown>
         ) : (
-          <span style={{color: 'red'}}>
-            消息内容为空 (ID: {message.id}, 角色: {message.role})
-          </span>
+          isCurrentlyStreaming ? (
+            <span className="typing-cursor"></span>
+          ) : (
+            <span style={{color: '#999', fontStyle: 'italic'}}>
+              正在加载消息...
+            </span>
+          )
         )}
         
         {isCurrentlyStreaming && (

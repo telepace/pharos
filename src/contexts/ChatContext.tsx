@@ -91,7 +91,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     
     if (storedCurrentConversation) {
       setCurrentConversation(storedCurrentConversation);
-      setMessages(storedCurrentConversation.messages);
+      // 确保使用深拷贝，防止引用问题导致消息丢失
+      const deepCopiedMessages = storedCurrentConversation.messages.map(msg => ({...msg}));
+      setMessages(deepCopiedMessages);
     } else {
       // 创建新对话
       createNewConversation();
@@ -103,8 +105,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     // 更新当前对话
     setCurrentConversation(conversation);
     
-    // 更新消息列表
-    setMessages(conversation.messages);
+    // 更新消息列表 - 使用深拷贝防止引用问题
+    const deepCopiedMessages = conversation.messages.map(msg => ({...msg}));
+    setMessages(deepCopiedMessages);
     
     // 保存到本地存储
     saveCurrentConversation(conversation);
@@ -224,7 +227,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     // 用于控制本地存储更新频率的计时器
     let saveTimer: NodeJS.Timeout | null = null;
     // 标记是否已经完成流式响应
-    let isStreamCompleted = false;
+    // let isStreamCompleted = false;
     
     try {
       // 确定是否使用特定模型
@@ -233,21 +236,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       
       // 处理流式响应的回调函数
       const handleStreamChunk = (chunk: string) => {
-        // 如果流已经完成，不再处理新的chunk
-        if (isStreamCompleted) {
-          console.log("流已完成，忽略新的chunk");
-          return;
-        }
-        
-        // 确保chunk是字符串
-        if (typeof chunk !== 'string') {
-          console.error('收到非字符串类型的chunk:', chunk);
-          return;
-        }
-        
-        // 更新完整内容
+        // 更新完整的流式内容
         fullStreamContent += chunk;
-        console.log("流式更新:", assistantMessageId, "当前内容长度:", fullStreamContent.length);
         
         // 直接更新消息列表中的AI回复内容
         setMessages(currentMessages => {
@@ -255,10 +245,20 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           const messageIndex = currentMessages.findIndex(msg => msg.id === assistantMessageId);
           
           if (messageIndex === -1) {
-            console.warn("警告: 流式更新时未找到AI消息，重新添加");
+            // 检查是否有重复的用户消息
+            const userMessages = currentMessages.filter(msg => msg.role === 'user');
+            const uniqueUserMessages = userMessages.filter((msg, index, self) => 
+              index === self.findIndex(m => m.id === msg.id)
+            );
+            
+            // 如果有重复的用户消息，只保留一个
+            const cleanedMessages = uniqueUserMessages.length < userMessages.length 
+              ? [...uniqueUserMessages]
+              : [...currentMessages];
+              
             // 如果不存在，重新添加
             return [
-              ...currentMessages,
+              ...cleanedMessages,
               {
                 id: assistantMessageId,
                 content: fullStreamContent,
@@ -352,7 +352,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       );
       
       // 标记流式响应已完成
-      isStreamCompleted = true;
+      // isStreamCompleted = true;
       
       // 跟踪AI生成
       if (traceId) {
@@ -543,7 +543,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     setCurrentConversation(targetConversation);
     
     // 确保消息列表被正确设置 - 使用深拷贝
-    console.log("切换到对话:", targetConversation.id, "消息数量:", targetConversation.messages.length);
     const deepCopiedMessages = targetConversation.messages.map(msg => ({...msg}));
     setMessages(deepCopiedMessages);
     
