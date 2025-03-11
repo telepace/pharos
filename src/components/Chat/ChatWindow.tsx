@@ -9,56 +9,107 @@ const ChatWindow: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const prevMessagesLengthRef = useRef(messages.length);
-  const hasScrolledDuringStreamRef = useRef(false);
+  const shouldScrollRef = useRef(true);
+  const userScrolledRef = useRef(false);
   
   // 自动滚动到底部
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ 
+      behavior: 'auto',
+      block: 'end'
+    });
   };
 
-  // 检查用户是否在消息底部附近
-  const isNearBottom = () => {
+  // 检查是否在底部（100px误差范围内）
+  const isAtBottom = () => {
     const container = messagesContainerRef.current;
     if (!container) return true;
     
-    // 判断滚动位置是否接近底部（20px误差范围内）
-    const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 20;
-    return isAtBottom;
+    // 如果内容高度小于容器高度，说明没有滚动条，视为在底部
+    if (container.scrollHeight <= container.clientHeight) {
+      return true;
+    }
+    
+    return container.scrollHeight - container.scrollTop - container.clientHeight < 150;
   };
 
-  // 只在消息数量增加且用户在底部时滚动到底部
-  useEffect(() => {
-    if (messages.length > prevMessagesLengthRef.current) {
-      // 只有当用户在底部附近时才自动滚动
-      if (isNearBottom()) {
-        scrollToBottom();
+  // 处理滚动事件
+  const handleScroll = () => {
+    // 记录用户是否在底部
+    shouldScrollRef.current = isAtBottom();
+    
+    // 只有在流式输出时且用户明确向上滚动时才标记为用户滚动
+    if (isStreaming) {
+      const container = messagesContainerRef.current;
+      if (container && container.scrollHeight - container.scrollTop - container.clientHeight > 150) {
+        userScrolledRef.current = true;
       }
     }
+  };
+
+  // 添加滚动监听
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (container) {
+      container.addEventListener('scroll', handleScroll);
+    }
+    
+    return () => {
+      if (container) {
+        container.removeEventListener('scroll', handleScroll);
+      }
+    };
+  }, [isStreaming]);
+
+  // 处理消息更新
+  useEffect(() => {
+    // 当消息数量增加时
+    if (messages.length > prevMessagesLengthRef.current) {
+      // 使用 requestAnimationFrame 确保在下一帧渲染后再检查
+      requestAnimationFrame(() => {
+        // 消息少于3条时总是滚动到底部
+        const messageCount = Math.ceil(messages.length / 2); // 计算对话轮次
+        if (messageCount < 3 || shouldScrollRef.current) {
+          scrollToBottom();
+        }
+      });
+    }
+    
     prevMessagesLengthRef.current = messages.length;
   }, [messages]);
   
-  // 处理流式输出时的滚动逻辑
+  // 处理流式输出时的滚动
   useEffect(() => {
-    // 当流式输出开始时，重置滚动标记
-    if (isStreaming && !hasScrolledDuringStreamRef.current) {
-      // 检查最后一条消息是否至少有3行，且用户在底部附近
-      const lastMessage = messages[messages.length - 1];
-      if (lastMessage && lastMessage.role === 'assistant' && isNearBottom()) {
-        const lineCount = (lastMessage.content.match(/\n/g) || []).length + 1;
-        
-        // 当达到至少3行且尚未滚动过时，执行一次滚动
-        if (lineCount >= 3 && !hasScrolledDuringStreamRef.current) {
+    // 流式开始时重置用户滚动标记
+    if (isStreaming) {
+      userScrolledRef.current = false;
+      
+      // 初始滚动到底部
+      scrollToBottom();
+      
+      // 使用 requestAnimationFrame 而不是 setInterval 来实现更平滑的滚动
+      let animationFrameId: number;
+      
+      const scrollLoop = () => {
+        if (isStreaming && !userScrolledRef.current) {
           scrollToBottom();
-          hasScrolledDuringStreamRef.current = true;
+          animationFrameId = requestAnimationFrame(scrollLoop);
         }
-      }
+      };
+      
+      // 启动滚动循环
+      animationFrameId = requestAnimationFrame(scrollLoop);
+      
+      return () => {
+        // 清理
+        cancelAnimationFrame(animationFrameId);
+        // 流式输出结束时重置用户滚动标记
+        setTimeout(() => {
+          userScrolledRef.current = false;
+        }, 500);
+      };
     }
-    
-    // 流式输出结束时，重置标记
-    if (!isStreaming) {
-      hasScrolledDuringStreamRef.current = false;
-    }
-  }, [isStreaming, messages]);
+  }, [isStreaming]);
   
   return (
     <Card 
@@ -80,7 +131,9 @@ const ChatWindow: React.FC = () => {
           overflowY: 'auto', 
           padding: '16px',
           display: 'flex',
-          flexDirection: 'column'
+          flexDirection: 'column',
+          scrollBehavior: 'smooth',
+          WebkitOverflowScrolling: 'touch'
         }}
       >
         {messages.length === 0 ? (

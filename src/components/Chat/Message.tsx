@@ -26,19 +26,6 @@ const Message: React.FC<MessageProps> = ({ message, observationId }) => {
   // 检查当前消息是否正在流式输出
   const isCurrentlyStreaming = isStreaming && streamingMessageId === message.id;
   
-  // 当消息内容更新时，应用高亮动画
-  /* useEffect(() => {
-    if (isCurrentlyStreaming && messageRef.current) {
-      messageRef.current.classList.add('message-highlight');
-      
-      const timer = setTimeout(() => {
-        messageRef.current?.classList.remove('message-highlight');
-      }, 300);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [message.content, isCurrentlyStreaming]); */
-  
   // 解析消息中的链接
   useEffect(() => {
     if (!isCurrentlyStreaming && message.content) {
@@ -79,7 +66,7 @@ const Message: React.FC<MessageProps> = ({ message, observationId }) => {
     <div 
       style={{ 
         display: 'flex', 
-        marginBottom: 16,
+        marginBottom: 32,
         flexDirection: isUser ? 'row-reverse' : 'row'
       }}
     >
@@ -95,7 +82,7 @@ const Message: React.FC<MessageProps> = ({ message, observationId }) => {
         ref={messageRef}
         className={`message-bubble ${isCurrentlyStreaming ? 'streaming-message' : ''}`}
         style={{
-          backgroundColor: isUser ? '#E7E6E4' : '#fff',
+          backgroundColor: isUser ? '#E8E7E5' : '#f5f5f5',
           position: 'relative',
           transition: 'background-color 0.3s ease'
         }}
