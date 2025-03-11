@@ -34,10 +34,47 @@ const ChatWindow: React.FC = () => {
     
     // 检查是否有AI消息
     const hasAssistantMessage = messages.some(msg => msg.role === 'assistant');
+    const hasLocalAssistantMessage = localMessages.some(msg => msg.role === 'assistant');
     
     // 如果消息数量减少且没有AI消息，可能是AI消息被意外移除了
-    if (localMessages.length > messages.length && !hasAssistantMessage && localMessages.some(msg => msg.role === 'assistant')) {
+    if (localMessages.length > messages.length && !hasAssistantMessage && hasLocalAssistantMessage) {
       console.warn("检测到AI消息可能被意外移除，保留本地消息列表");
+      
+      // 尝试合并消息列表，保留AI消息
+      const mergedMessages = [...messages];
+      
+      // 找出本地列表中的AI消息
+      const assistantMessages = localMessages.filter(msg => msg.role === 'assistant');
+      
+      // 检查每条AI消息是否已存在于合并列表中
+      assistantMessages.forEach(assistantMsg => {
+        const exists = mergedMessages.some(msg => msg.id === assistantMsg.id);
+        if (!exists) {
+          console.log("添加丢失的AI消息回列表:", assistantMsg.id);
+          mergedMessages.push(assistantMsg);
+        }
+      });
+      
+      // 如果合并后的列表包含AI消息且与原始消息列表不同，则更新本地消息列表
+      if (mergedMessages.length > messages.length) {
+        console.log("使用合并后的消息列表:", mergedMessages.length, "条消息");
+        
+        // 按时间戳排序
+        mergedMessages.sort((a, b) => a.timestamp - b.timestamp);
+        
+        const deepCopiedMessages = mergedMessages.map(msg => ({...msg}));
+        setLocalMessages(deepCopiedMessages);
+        
+        // 通知ChatContext恢复消息
+        // 这里我们不直接调用setMessages，而是通过一个自定义事件通知ChatContext
+        const event = new CustomEvent('restoreMessages', { 
+          detail: { messages: deepCopiedMessages } 
+        });
+        window.dispatchEvent(event);
+        
+        return;
+      }
+      
       return; // 不更新本地消息列表，保留当前状态
     }
     
@@ -45,6 +82,22 @@ const ChatWindow: React.FC = () => {
     const deepCopiedMessages = messages.map(msg => ({...msg}));
     setLocalMessages(deepCopiedMessages);
   }, [messages, localMessages]);
+  
+  // 监听恢复消息事件
+  useEffect(() => {
+    const handleRestoreMessages = (event: any) => {
+      console.log("收到恢复消息事件");
+      if (event.detail && event.detail.messages) {
+        setLocalMessages(event.detail.messages);
+      }
+    };
+    
+    window.addEventListener('restoreMessages', handleRestoreMessages);
+    
+    return () => {
+      window.removeEventListener('restoreMessages', handleRestoreMessages);
+    };
+  }, []);
   
   // 自动滚动到底部
   const scrollToBottom = useCallback(() => {

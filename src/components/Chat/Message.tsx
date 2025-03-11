@@ -33,10 +33,22 @@ const Message: React.FC<MessageProps> = ({ message, observationId }) => {
   // 检查当前消息是否正在流式输出
   const isCurrentlyStreaming = isStreaming && streamingMessageId === message.id;
   
+  // 组件挂载时，确保contentRef初始化为消息内容
+  useEffect(() => {
+    if (message.content) {
+      contentRef.current = message.content;
+      console.log(`初始化消息内容 [${message.id}] [${message.role}]: 内容长度 ${message.content.length}`);
+    }
+  }, [message.content, message.id, message.role]);
+  
   // 当消息内容更新时，更新contentRef并强制重新渲染
   useEffect(() => {
     // 只有当消息内容不为空且与当前存储的内容不同时才更新
     if (message.content !== undefined && message.content !== null && message.content !== contentRef.current) {
+      console.log(`消息内容更新 [${message.id}] [${message.role}]:`, 
+        `旧内容长度: ${contentRef.current.length}`, 
+        `新内容长度: ${message.content.length}`);
+      
       // 更新ref中存储的内容
       contentRef.current = message.content;
       
@@ -54,7 +66,41 @@ const Message: React.FC<MessageProps> = ({ message, observationId }) => {
         return () => clearTimeout(timer);
       }
     }
-  }, [message.content, isCurrentlyStreaming, message.id]);
+  }, [message.content, isCurrentlyStreaming, message.id, message.role]);
+  
+  // 组件卸载前保存消息内容到localStorage
+  useEffect(() => {
+    return () => {
+      // 如果是AI消息且有内容，保存到localStorage
+      if (!isUser && contentRef.current) {
+        try {
+          const key = `message_content_${message.id}`;
+          localStorage.setItem(key, contentRef.current);
+          console.log(`保存AI消息内容到localStorage [${message.id}]: 内容长度 ${contentRef.current.length}`);
+        } catch (error) {
+          console.error("保存消息内容到localStorage失败:", error);
+        }
+      }
+    };
+  }, [message.id, isUser]);
+  
+  // 组件挂载时，尝试从localStorage恢复消息内容
+  useEffect(() => {
+    // 只对AI消息进行恢复
+    if (!isUser && (!contentRef.current || contentRef.current.length === 0)) {
+      try {
+        const key = `message_content_${message.id}`;
+        const savedContent = localStorage.getItem(key);
+        if (savedContent) {
+          console.log(`从localStorage恢复AI消息内容 [${message.id}]: 内容长度 ${savedContent.length}`);
+          contentRef.current = savedContent;
+          setForceUpdate(prev => prev + 1);
+        }
+      } catch (error) {
+        console.error("从localStorage恢复消息内容失败:", error);
+      }
+    }
+  }, [message.id, isUser]);
   
   // 解析消息中的链接
   useEffect(() => {
@@ -73,8 +119,22 @@ const Message: React.FC<MessageProps> = ({ message, observationId }) => {
     // 使用ref中存储的内容，而不是直接使用message.content
     const content = contentRef.current;
     
+    // 如果ref中没有内容但message.content有内容，则使用message.content
+    // 这是一个额外的安全措施，确保内容不会丢失
+    if (!content && message.content) {
+      console.log(`使用message.content作为备份 [${message.id}] [${message.role}]`);
+      contentRef.current = message.content;
+    }
+    
     // 确保内容不为undefined或null
-    const safeContent = content || '';
+    const safeContent = contentRef.current || '';
+    
+    // 记录渲染的内容长度，用于调试
+    if (isUser) {
+      console.log(`渲染用户消息 [${message.id}]: 内容长度 ${safeContent.length}`);
+    } else {
+      console.log(`渲染AI消息 [${message.id}]: 内容长度 ${safeContent.length}`);
+    }
     
     return (
       <div style={{ margin: 0 }}>
