@@ -14,6 +14,7 @@ import {
 } from '../services/localStorage';
 import { LLMModel, PromptType } from '../types';
 import { getOrCreateTrace, trackAIGeneration } from '../services/langfuseService';
+import { performAutoWebSearch } from '../services/searchService';
 
 interface ChatContextType {
   conversations: Conversation[];
@@ -274,6 +275,38 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     let saveTimer: NodeJS.Timeout | null = null;
     
     try {
+      // 执行自动网络搜索
+      const searchResults = await performAutoWebSearch(content);
+      
+      // 构建发送给AI的消息
+      let messagesToSend = [...updatedMessages];
+      
+      // 如果有搜索结果，添加系统消息
+      if (searchResults && searchResults.results.length > 0) {
+        // 构建搜索结果系统消息
+        const searchResultsContent = `
+用户可能需要最新信息。我已经为"${searchResults.query}"执行了网络搜索，以下是搜索结果：
+
+${searchResults.results.map((result, index) => `[${index + 1}] ${result.title}
+${result.snippet}
+来源: ${result.url}
+`).join('\n')}
+
+请根据这些搜索结果回答用户的问题。如果搜索结果不相关或不足以回答问题，请基于你已有的知识回答，并说明可能需要更多信息。
+`.trim();
+
+        // 添加系统消息
+        const systemMessage: Message = {
+          id: uuidv4(),
+          content: searchResultsContent,
+          role: 'system',
+          timestamp: Date.now(),
+          isHidden: true // 对用户隐藏的系统消息
+        };
+        
+        messagesToSend = [...updatedMessages, systemMessage];
+      }
+      
       // 确定是否使用特定模型
       const hasSpecificModel = activePrompt?.model && activePrompt.model !== LLMModel.GPT35;
       
@@ -327,7 +360,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       };
       
       const aiResponse = await sendMessageToAI(
-        updatedMessages,
+        messagesToSend,
         activePrompt?.content || null,
         activePrompt?.type || PromptType.SYSTEM,
         activePrompt?.model as LLMModel || LLMModel.GPT35,
@@ -347,7 +380,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       if (trace) {
         const generation = trackAIGeneration(
           trace,
-          updatedMessages,
+          messagesToSend,
           activePrompt?.content || null,
           activePrompt?.model as LLMModel || LLMModel.GPT35,
           aiResponse.provider,

@@ -15,8 +15,9 @@ export interface Prompt {
 export interface Message {
   id: string;
   content: string;
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'system';
   timestamp: number;
+  isHidden?: boolean;
 }
 
 export interface Conversation {

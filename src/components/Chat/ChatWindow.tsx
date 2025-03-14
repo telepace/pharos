@@ -12,6 +12,9 @@ const ChatWindow: React.FC = () => {
   const shouldScrollRef = useRef(true);
   const userScrolledRef = useRef(false);
   
+  // 过滤掉隐藏的消息
+  const visibleMessages = messages.filter(message => !message.isHidden);
+  
   // 自动滚动到底部
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ 
@@ -64,19 +67,19 @@ const ChatWindow: React.FC = () => {
   // 处理消息更新
   useEffect(() => {
     // 当消息数量增加时
-    if (messages.length > prevMessagesLengthRef.current) {
+    if (visibleMessages.length > prevMessagesLengthRef.current) {
       // 使用 requestAnimationFrame 确保在下一帧渲染后再检查
       requestAnimationFrame(() => {
         // 消息少于3条时总是滚动到底部
-        const messageCount = Math.ceil(messages.length / 2); // 计算对话轮次
+        const messageCount = Math.ceil(visibleMessages.length / 2); // 计算对话轮次
         if (messageCount < 3 || shouldScrollRef.current) {
           scrollToBottom();
         }
       });
     }
     
-    prevMessagesLengthRef.current = messages.length;
-  }, [messages]);
+    prevMessagesLengthRef.current = visibleMessages.length;
+  }, [visibleMessages]);
   
   // 处理流式输出时的滚动
   useEffect(() => {
@@ -136,13 +139,13 @@ const ChatWindow: React.FC = () => {
           WebkitOverflowScrolling: 'touch'
         }}
       >
-        {messages.length === 0 ? (
+        {visibleMessages.length === 0 ? (
           <Empty 
             description="暂无消息" 
             style={{ margin: 'auto' }}
           />
         ) : (
-          messages.map(message => (
+          visibleMessages.map(message => (
             <Message 
               key={message.id} 
               message={message} 
