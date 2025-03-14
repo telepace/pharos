@@ -1,4 +1,5 @@
 // 消息处理工具函数
+import { tavilySearch, formatTavilyResults } from '../services/tavilyService';
 
 /**
  * 解析文本中的URL链接
@@ -56,9 +57,13 @@ export const getLinkMetadata = async (url: string): Promise<{
 /**
  * 执行网络搜索
  * @param query 搜索查询
+ * @param searchDepth 搜索深度，默认为basic
  * @returns 搜索结果
  */
-export const performWebSearch = async (query: string): Promise<{
+export const performWebSearch = async (
+  query: string, 
+  searchDepth: 'basic' | 'advanced' = 'basic'
+): Promise<{
   results: Array<{
     title: string;
     url: string;
@@ -66,15 +71,30 @@ export const performWebSearch = async (query: string): Promise<{
   }>;
 }> => {
   try {
-    // 调用后端API执行搜索
-    const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
-    if (!response.ok) {
-      throw new Error('搜索请求失败');
-    }
-    return await response.json();
+    // 使用Tavily API执行搜索
+    const tavilyResult = await tavilySearch({
+      query,
+      search_depth: searchDepth,
+      max_results: 10
+    });
+    
+    // 将Tavily结果转换为标准格式
+    return formatTavilyResults(tavilyResult);
   } catch (error) {
     console.error('搜索错误:', error);
-    return { results: [] };
+    
+    // 如果Tavily搜索失败，尝试使用备用搜索API
+    try {
+      // 调用后端API执行搜索
+      const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+      if (!response.ok) {
+        throw new Error('搜索请求失败');
+      }
+      return await response.json();
+    } catch (backupError) {
+      console.error('备用搜索也失败:', backupError);
+      return { results: [] };
+    }
   }
 };
 

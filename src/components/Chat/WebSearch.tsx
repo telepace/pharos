@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Input, Button, Card, List, Typography, Space, Spin, Empty } from 'antd';
-import { SearchOutlined, LinkOutlined, LoadingOutlined } from '@ant-design/icons';
+import { Input, Button, Card, List, Typography, Space, Spin, Empty, Select, message } from 'antd';
+import { SearchOutlined, LinkOutlined, LoadingOutlined, SettingOutlined } from '@ant-design/icons';
 import { performWebSearch } from '../../utils/messageUtils';
 
 const { Text, Paragraph } = Typography;
 const { Search } = Input;
+const { Option } = Select;
 
 interface WebSearchProps {
   onSearchComplete: (query: string, results: Array<{ title: string; url: string; snippet: string }>) => void;
@@ -15,15 +16,19 @@ const WebSearch: React.FC<WebSearchProps> = ({ onSearchComplete }) => {
   const [results, setResults] = useState<Array<{ title: string; url: string; snippet: string }>>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [searchDepth, setSearchDepth] = useState<'basic' | 'advanced'>('basic');
+  const [error, setError] = useState<string | null>(null);
 
   const handleSearch = async (value: string) => {
     if (!value.trim()) return;
     
     setLoading(true);
     setQuery(value);
+    setError(null);
     
     try {
-      const searchResults = await performWebSearch(value);
+      // 传递searchDepth参数
+      const searchResults = await performWebSearch(value, searchDepth);
       setResults(searchResults.results);
       setSearched(true);
       
@@ -31,9 +36,15 @@ const WebSearch: React.FC<WebSearchProps> = ({ onSearchComplete }) => {
       onSearchComplete(value, searchResults.results);
     } catch (error) {
       console.error('搜索失败:', error);
+      setError(error instanceof Error ? error.message : '搜索过程中发生未知错误');
+      message.error('搜索失败，请稍后重试');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDepthChange = (value: 'basic' | 'advanced') => {
+    setSearchDepth(value);
   };
 
   return (
@@ -42,6 +53,19 @@ const WebSearch: React.FC<WebSearchProps> = ({ onSearchComplete }) => {
         <Space>
           <SearchOutlined />
           <span>网络搜索</span>
+        </Space>
+      }
+      extra={
+        <Space>
+          <Select 
+            value={searchDepth} 
+            onChange={handleDepthChange}
+            style={{ width: 120 }}
+          >
+            <Option value="basic">基础搜索</Option>
+            <Option value="advanced">深度搜索</Option>
+          </Select>
+          <SettingOutlined />
         </Space>
       }
       size="small"
@@ -60,6 +84,14 @@ const WebSearch: React.FC<WebSearchProps> = ({ onSearchComplete }) => {
         <div style={{ textAlign: 'center', padding: '20px 0' }}>
           <Spin indicator={<LoadingOutlined style={{ fontSize: 24 }} spin />} />
           <div style={{ marginTop: 8 }}>正在搜索中...</div>
+        </div>
+      ) : error ? (
+        <div style={{ textAlign: 'center', padding: '20px 0', color: '#ff4d4f' }}>
+          <div>搜索出错</div>
+          <div style={{ fontSize: 12, marginTop: 8 }}>{error}</div>
+          <Button type="primary" size="small" style={{ marginTop: 16 }} onClick={() => handleSearch(query)}>
+            重试
+          </Button>
         </div>
       ) : searched && results.length === 0 ? (
         <Empty description="未找到相关结果" />
