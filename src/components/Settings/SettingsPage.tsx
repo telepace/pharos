@@ -28,7 +28,9 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
       useGlobalPrompt: settings.useGlobalPrompt,
       globalPrompt: settings.globalPrompt,
       globalPromptType: settings.globalPromptType,
-      theme: settings.theme
+      theme: settings.theme,
+      enableAutoSearch: settings.enableAutoSearch,
+      defaultSearchDepth: settings.defaultSearchDepth
     });
   }, [settings, form]);
 
@@ -39,7 +41,9 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
       useGlobalPrompt: values.useGlobalPrompt,
       globalPrompt: values.globalPrompt,
       globalPromptType: values.globalPromptType,
-      theme: values.theme
+      theme: values.theme,
+      enableAutoSearch: values.enableAutoSearch,
+      defaultSearchDepth: values.defaultSearchDepth
     });
     message.success('设置已保存');
     if (onBack) {
@@ -127,6 +131,33 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
             ) : null
           }
         </Form.Item>
+      </Card>
+
+      <Card title="搜索设置" style={{ marginBottom: '24px' }}>
+        <Form.Item
+          name="enableAutoSearch"
+          valuePropName="checked"
+          label="启用自动网络搜索"
+        >
+          <Switch />
+        </Form.Item>
+        <Text type="secondary">
+          启用后，系统将自动检测需要最新信息的问题，并执行网络搜索以获取最新数据
+        </Text>
+        
+        <Form.Item
+          name="defaultSearchDepth"
+          label="默认搜索深度"
+          style={{ marginTop: 16 }}
+        >
+          <Radio.Group>
+            <Radio value="basic">基础搜索</Radio>
+            <Radio value="advanced">深度搜索</Radio>
+          </Radio.Group>
+        </Form.Item>
+        <Text type="secondary">
+          基础搜索速度更快，深度搜索结果更全面但速度较慢
+        </Text>
       </Card>
 
       <Card title="界面设置" style={{ marginBottom: '24px' }}>

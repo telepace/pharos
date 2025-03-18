@@ -8,6 +8,8 @@ interface Settings {
   useGlobalPrompt: boolean;
   globalPromptType: PromptType;
   theme: 'light' | 'dark';
+  enableAutoSearch: boolean; // 是否启用自动搜索
+  defaultSearchDepth: 'basic' | 'advanced'; // 默认搜索深度
 }
 
 // 默认设置
@@ -16,7 +18,9 @@ const defaultSettings: Settings = {
   globalPrompt: '',
   useGlobalPrompt: false,
   globalPromptType: PromptType.SYSTEM,
-  theme: 'light'
+  theme: 'light',
+  enableAutoSearch: true, // 默认启用自动搜索
+  defaultSearchDepth: 'basic' // 默认使用基础搜索
 };
 
 // 设置上下文类型

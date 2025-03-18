@@ -40,6 +40,12 @@ const getAIConfig = (provider: AIProvider): AIConfig => {
         apiKey: process.env.REACT_APP_QWEN_API_KEY || '',
         baseUrl: process.env.REACT_APP_QWEN_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1'
       };
+    case AIProvider.OPENROUTER:
+      return {
+        provider: AIProvider.OPENROUTER,
+        apiKey: process.env.REACT_APP_OPENROUTER_API_KEY || '',
+        baseUrl: process.env.REACT_APP_OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1'
+      };
     default:
       throw new Error(`不支持的AI提供商: ${provider}`);
   }
@@ -62,6 +68,12 @@ const getProviderFromModel = (model: LLMModel): AIProvider => {
     return AIProvider.DEEPSEEK;
   } else if (model.startsWith('qwen') || model.startsWith('qwq')) {
     return AIProvider.QWEN;
+  } else if (model === LLMModel.OPENROUTER_GEMINI_FLASH ||
+             model === LLMModel.OPENROUTER_CLAUDE_OPUS ||
+             model === LLMModel.OPENROUTER_LLAMA || 
+             model === LLMModel.OPENROUTER_MIXTRAL ||
+             model.includes('/')) {  // OpenRouter模型通常包含提供商前缀
+    return AIProvider.OPENROUTER;
   }
   throw new Error(`无法确定模型 ${model} 的提供商`);
 };
@@ -605,7 +617,7 @@ const callQwen = async (
     
     // 准备请求体
     const requestBody: any = {
-      model,
+      model: model.toString(),
       messages: formattedMessages,
       stream: isStream
     };
@@ -727,6 +739,161 @@ const callQwen = async (
   }
 };
 
+// OpenRouter API调用
+const callOpenRouter = async (
+  messages: Message[],
+  promptContent: string | null,
+  model: LLMModel,
+  config: AIConfig,
+  streamCallback?: (chunk: string) => void
+): Promise<AIResponse> => {
+  const formattedMessages = [
+    ...(promptContent ? [{ role: 'system', content: promptContent }] : []),
+    ...messages.map(msg => ({ role: msg.role, content: msg.content }))
+  ];
+
+  const headers: HeadersInit = {
+    'Authorization': `Bearer ${config.apiKey}`,
+    'Content-Type': 'application/json',
+  };
+
+  // 添加可选的站点信息头，确保编码正确
+  try {
+    // 从环境变量或localStorage获取值
+    const siteUrl = process.env.REACT_APP_OPENROUTER_SITE_URL || localStorage.getItem('openrouter_site_url') || '';
+    const siteName = process.env.REACT_APP_OPENROUTER_SITE_NAME || localStorage.getItem('openrouter_site_name') || '';
+    
+    // 确保使用纯ASCII字符或进行正确编码
+    if (siteUrl) {
+      // 使用URL构造函数确保URL格式正确
+      try {
+        const url = new URL(siteUrl);
+        headers['HTTP-Referer'] = url.toString();
+      } catch (e) {
+        console.warn('无效的站点URL:', siteUrl);
+      }
+    }
+    
+    if (siteName) {
+      // 确保站点名称只包含ASCII字符
+      const asciiSiteName = siteName.replace(/[^\x00-\x7F]/g, ''); // 移除非ASCII字符
+      if (asciiSiteName.length > 0) {
+        headers['X-Title'] = asciiSiteName;
+      }
+    }
+  } catch (error) {
+    console.warn('设置OpenRouter头信息时出错:', error);
+    // 继续处理，不要因为头信息问题阻止API调用
+  }
+
+  const requestBody = {
+    model: model.toString(),
+    messages: formattedMessages,
+    stream: !!streamCallback
+  };
+
+  try {
+    const response = await fetch(`${config.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(requestBody)
+    });
+
+    if (!response.ok) {
+      let errorMessage = `OpenRouter API错误: 状态码 ${response.status}`;
+      try {
+        const errorResponse = await response.json();
+        errorMessage = `OpenRouter API错误: ${JSON.stringify(errorResponse)}`;
+      } catch (e) {
+        // 如果不能解析为JSON，尝试获取文本
+        try {
+          const errorText = await response.text();
+          errorMessage = `OpenRouter API错误: ${errorText}`;
+        } catch (textError) {
+          // 如果文本也不能获取，使用默认错误信息
+          console.error('无法解析错误响应', textError);
+        }
+      }
+      throw new Error(errorMessage);
+    }
+
+    // 处理流式响应
+    if (streamCallback) {
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('无法获取响应流');
+      }
+
+      let buffer = '';
+      let responseContent = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = new TextDecoder().decode(value);
+        buffer += chunk;
+
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+            try {
+              const json = JSON.parse(line.substring(6));
+              const content = json.choices[0]?.delta?.content || '';
+              if (content) {
+                responseContent += content;
+                streamCallback(content);
+              }
+            } catch (e) {
+              console.warn('解析流式响应时出错:', e, 'line:', line);
+              // 继续处理下一行，不中断流
+            }
+          }
+        }
+      }
+
+      return {
+        content: responseContent,
+        model: model,
+        provider: AIProvider.OPENROUTER
+      };
+    }
+
+    // 处理非流式响应
+    try {
+      const data = await response.json();
+      
+      // 验证响应结构是否符合预期
+      if (!data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
+        console.error('OpenRouter API响应格式异常:', data);
+        throw new Error('OpenRouter API响应格式异常: 找不到choices字段或为空');
+      }
+      
+      const content = data.choices[0]?.message?.content || '';
+      
+      // 构建返回结果
+      return {
+        content,
+        model: model.toString(), // 使用字符串形式
+        provider: AIProvider.OPENROUTER,
+        usage: data.usage ? {
+          promptTokens: data.usage.prompt_tokens,
+          completionTokens: data.usage.completion_tokens,
+          totalTokens: data.usage.total_tokens
+        } : undefined
+      };
+    } catch (parseError: any) {
+      console.error('解析OpenRouter API响应时出错:', parseError);
+      throw new Error(`解析OpenRouter API响应时出错: ${parseError.message || '未知错误'}`);
+    }
+  } catch (error) {
+    console.error('OpenRouter API 错误:', error);
+    throw error;
+  }
+};
+
 // 主要的API调用函数
 export const sendMessageToAI = async (
   messages: Message[],
@@ -804,6 +971,9 @@ export const sendMessageToAI = async (
         break;
       case AIProvider.QWEN:
         response = await callQwen(messages, finalPromptContent, finalModel, config, streamCallback);
+        break;
+      case AIProvider.OPENROUTER:
+        response = await callOpenRouter(messages, finalPromptContent, finalModel, config, streamCallback);
         break;
       default:
         throw new Error(`不支持的AI提供商: ${provider}`);
@@ -889,7 +1059,73 @@ export const getAvailableModels = (): { model: LLMModel; provider: AIProvider }[
     );
   }
   
+  // 检查OpenRouter配置
+  if (process.env.REACT_APP_OPENROUTER_API_KEY) {
+    // 默认内置的OpenRouter模型
+    const defaultOpenRouterModels = [
+      { model: LLMModel.OPENROUTER_GEMINI_FLASH, provider: AIProvider.OPENROUTER },
+      { model: LLMModel.OPENROUTER_GEMINI_FLASH_001, provider: AIProvider.OPENROUTER },
+      { model: LLMModel.OPENROUTER_GEMINI_PRO_EXP, provider: AIProvider.OPENROUTER },
+      { model: LLMModel.OPENROUTER_GEMINI_FLASH_THINKING, provider: AIProvider.OPENROUTER },
+      { model: LLMModel.OPENROUTER_CLAUDE_OPUS, provider: AIProvider.OPENROUTER },
+      { model: LLMModel.OPENROUTER_LLAMA, provider: AIProvider.OPENROUTER },
+      { model: LLMModel.OPENROUTER_MIXTRAL, provider: AIProvider.OPENROUTER }
+    ];
+    
+    // 获取可配置的额外模型（支持从环境变量中配置）
+    const additionalOpenRouterModels = getAdditionalOpenRouterModels();
+    
+    models.push(...defaultOpenRouterModels, ...additionalOpenRouterModels);
+  }
+  
   return models;
+};
+
+// 从配置中获取额外的OpenRouter模型
+const getAdditionalOpenRouterModels = (): { model: LLMModel; provider: AIProvider }[] => {
+  const additionalModels: { model: LLMModel; provider: AIProvider }[] = [];
+  
+  // 从环境变量中读取配置的额外模型（如果有的话）
+  const openRouterModelsConfig = process.env.REACT_APP_OPENROUTER_MODELS;
+  if (openRouterModelsConfig) {
+    try {
+      // 支持两种格式:
+      // 1. 简单的逗号分隔列表: "model1,model2,model3"
+      // 2. JSON数组格式: '["model1", "model2", "model3"]'
+      let modelNames: string[] = [];
+      
+      // 尝试解析为JSON数组
+      if (openRouterModelsConfig.trim().startsWith('[')) {
+        try {
+          modelNames = JSON.parse(openRouterModelsConfig);
+        } catch {
+          // 如果JSON解析失败，回退到逗号分隔格式
+          modelNames = openRouterModelsConfig.split(',').map(m => m.trim());
+        }
+      } else {
+        // 使用逗号分隔格式
+        modelNames = openRouterModelsConfig.split(',').map(m => m.trim());
+      }
+      
+      // 添加模型到列表
+      modelNames.forEach(modelName => {
+        if (modelName) {
+          // 将模型名称作为动态模型添加
+          additionalModels.push({
+            model: modelName as LLMModel,
+            provider: AIProvider.OPENROUTER
+          });
+        }
+      });
+    } catch (error) {
+      console.error('解析OpenRouter额外模型配置失败:', error);
+    }
+  }
+  
+  // 检查是否已经在LLMModel枚举中定义了这些模型
+  // 如果没有，我们仍然可以使用它们，因为我们使用了 as LLMModel 类型断言
+  
+  return additionalModels;
 };
 
 // 测试AI连接
@@ -1050,4 +1286,4 @@ export const sendMessage = async (
     provider,
     usage: data.usage
   };
-}; 
+};
