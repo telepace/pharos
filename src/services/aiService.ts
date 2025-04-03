@@ -64,7 +64,9 @@ const getProviderFromModel = (model: LLMModel): AIProvider => {
              model === LLMModel.HUOSHAN_DEEPSEEK_R1_QWEN_7B || 
              model === LLMModel.HUOSHAN_DEEPSEEK_V3) {
     return AIProvider.HUOSHAN;
-  } else if (model.startsWith('deepseek')) {
+  } else if (model.startsWith('deepseek') && 
+             model !== LLMModel.OPENROUTER_DEEPSEEK_V3 && 
+             !model.includes('/')) {
     return AIProvider.DEEPSEEK;
   } else if (model.startsWith('qwen') || model.startsWith('qwq')) {
     return AIProvider.QWEN;
@@ -72,6 +74,7 @@ const getProviderFromModel = (model: LLMModel): AIProvider => {
              model === LLMModel.OPENROUTER_CLAUDE_OPUS ||
              model === LLMModel.OPENROUTER_LLAMA || 
              model === LLMModel.OPENROUTER_MIXTRAL ||
+             model === LLMModel.OPENROUTER_DEEPSEEK_V3 ||
              model.includes('/')) {  // OpenRouter模型通常包含提供商前缀
     return AIProvider.OPENROUTER;
   }
@@ -786,8 +789,12 @@ const callOpenRouter = async (
     // 继续处理，不要因为头信息问题阻止API调用
   }
 
+  // 确保模型名称格式正确
+  const modelName = model.toString();
+  console.log(`使用OpenRouter调用模型: ${modelName}`);
+
   const requestBody = {
-    model: model.toString(),
+    model: modelName,
     messages: formattedMessages,
     stream: !!streamCallback
   };
@@ -949,6 +956,8 @@ export const sendMessageToAI = async (
   try {
     // 确定AI提供商
     const provider = getProviderFromModel(finalModel);
+    console.log(`使用模型 ${finalModel}，识别提供商为: ${provider}`);
+    
     const config = getAIConfig(provider);
 
     // 根据提供商调用相应的API
@@ -964,6 +973,7 @@ export const sendMessageToAI = async (
         response = await callGemini(messages, finalPromptContent, finalModel, config, streamCallback);
         break;
       case AIProvider.DEEPSEEK:
+        console.log('调用 DeepSeek API...');
         response = await callDeepSeek(messages, finalPromptContent, finalModel, config, streamCallback);
         break;
       case AIProvider.HUOSHAN:
@@ -973,6 +983,7 @@ export const sendMessageToAI = async (
         response = await callQwen(messages, finalPromptContent, finalModel, config, streamCallback);
         break;
       case AIProvider.OPENROUTER:
+        console.log('调用 OpenRouter API...');
         response = await callOpenRouter(messages, finalPromptContent, finalModel, config, streamCallback);
         break;
       default:
@@ -1069,7 +1080,8 @@ export const getAvailableModels = (): { model: LLMModel; provider: AIProvider }[
       { model: LLMModel.OPENROUTER_GEMINI_FLASH_THINKING, provider: AIProvider.OPENROUTER },
       { model: LLMModel.OPENROUTER_CLAUDE_OPUS, provider: AIProvider.OPENROUTER },
       { model: LLMModel.OPENROUTER_LLAMA, provider: AIProvider.OPENROUTER },
-      { model: LLMModel.OPENROUTER_MIXTRAL, provider: AIProvider.OPENROUTER }
+      { model: LLMModel.OPENROUTER_MIXTRAL, provider: AIProvider.OPENROUTER },
+      { model: LLMModel.OPENROUTER_DEEPSEEK_V3, provider: AIProvider.OPENROUTER }
     ];
     
     // 获取可配置的额外模型（支持从环境变量中配置）
@@ -1189,6 +1201,14 @@ export const testAIConnection = async (provider: AIProvider): Promise<boolean> =
             model: 'qwen-plus',
             messages: [{ role: 'user', content: 'test' }]
           })
+        });
+        return response.ok;
+      }
+      case AIProvider.OPENROUTER: {
+        const response = await fetch(`${config.baseUrl}/models`, {
+          headers: {
+            'Authorization': `Bearer ${config.apiKey}`
+          }
         });
         return response.ok;
       }

@@ -64,7 +64,8 @@ export enum LLMModel {
   OPENROUTER_GEMINI_FLASH_THINKING = 'google/gemini-2.0-flash-thinking-exp:free',
   OPENROUTER_CLAUDE_OPUS = 'anthropic/claude-3-opus',
   OPENROUTER_LLAMA = 'meta-llama/llama-3-70b-instruct',
-  OPENROUTER_MIXTRAL = 'mistralai/mixtral-8x7b-instruct'
+  OPENROUTER_MIXTRAL = 'mistralai/mixtral-8x7b-instruct',
+  OPENROUTER_DEEPSEEK_V3 = 'deepseek/deepseek-chat-v3-0324'
 }
 
 export enum AIProvider {

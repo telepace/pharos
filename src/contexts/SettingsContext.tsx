@@ -12,7 +12,7 @@ interface Settings {
 
 // 默认设置
 const defaultSettings: Settings = {
-  defaultModel: LLMModel.GPT4,
+  defaultModel: LLMModel.OPENROUTER_DEEPSEEK_V3,
   globalPrompt: '',
   useGlobalPrompt: false,
   globalPromptType: PromptType.SYSTEM,

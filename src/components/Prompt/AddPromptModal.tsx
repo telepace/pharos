@@ -205,6 +205,7 @@ const AddPromptModal: React.FC<AddPromptModalProps> = ({
               {renderModelOption(LLMModel.OPENROUTER_CLAUDE_OPUS)}
               {renderModelOption(LLMModel.OPENROUTER_LLAMA)}
               {renderModelOption(LLMModel.OPENROUTER_MIXTRAL)}
+              {renderModelOption(LLMModel.OPENROUTER_DEEPSEEK_V3)}
             </Select.OptGroup>
 
             {/* 其他模型 */}
