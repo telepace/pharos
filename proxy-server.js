@@ -211,33 +211,33 @@ app.get('/api/search', async (req, res) => {
   }
   
   try {
-    // 这里应该集成实际的搜索API，如Google、Bing等
-    // 以下是模拟的搜索结果
-    const results = [
-      {
-        title: `关于 "${q}" 的搜索结果1`,
-        url: 'https://example.com/result1',
-        snippet: `这是关于 "${q}" 的详细信息，包含了相关的解释和背景知识。`
-      },
-      {
-        title: `${q} 的最新动态`,
-        url: 'https://example.com/result2',
-        snippet: `最新的 ${q} 相关新闻和更新，包括最近的发展和趋势。`
-      },
-      {
-        title: `如何理解 ${q}`,
-        url: 'https://example.com/result3',
-        snippet: `专家解析 ${q} 的核心概念和关键点，帮助你更好地理解这个主题。`
+    const tavilyApiKey = process.env.REACT_APP_TAVILY_API_KEY;
+    if (!tavilyApiKey) {
+      throw new Error('Tavily API key not configured');
+    }
+
+    const response = await axios.post('https://api.tavily.com/search', {
+      query: q,
+      search_depth: "advanced",
+      include_answer: true,
+      include_domains: [],
+      exclude_domains: [],
+      max_results: 5
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Api-Key': tavilyApiKey
       }
-    ];
-    
-    // 模拟网络延迟
-    setTimeout(() => {
-      res.json({ results });
-    }, 1000);
+    });
+
+    // 直接返回Tavily的搜索结果
+    res.json(response.data);
   } catch (error) {
-    console.error('搜索失败:', error.message);
-    res.status(500).json({ error: '搜索请求失败' });
+    console.error('Tavily搜索失败:', error.message);
+    res.status(500).json({ 
+      error: '搜索请求失败',
+      details: error.message
+    });
   }
 });
 
