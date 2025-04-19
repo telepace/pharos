@@ -70,11 +70,14 @@ const getProviderFromModel = (model: LLMModel): AIProvider => {
     return AIProvider.DEEPSEEK;
   } else if (model.startsWith('qwen') || model.startsWith('qwq')) {
     return AIProvider.QWEN;
-  } else if (model === LLMModel.OPENROUTER_GEMINI_FLASH ||
-             model === LLMModel.OPENROUTER_CLAUDE_OPUS ||
-             model === LLMModel.OPENROUTER_LLAMA || 
-             model === LLMModel.OPENROUTER_MIXTRAL ||
+  } else if (model === LLMModel.OPENROUTER_GEMINI_FLASH_001 ||
              model === LLMModel.OPENROUTER_DEEPSEEK_V3 ||
+             model === LLMModel.OPENROUTER_O3 ||
+             model === LLMModel.OPENROUTER_O4_MINI ||
+             model === LLMModel.OPENROUTER_GEMINI_2_5_PRO ||
+             model === LLMModel.OPENROUTER_GPT_4_1_MINI ||
+             model === LLMModel.OPENROUTER_GPT_4_1 ||
+             model === LLMModel.OPENROUTER_DEEPSEEK_R1 ||
              model.includes('/')) {  // OpenRouter模型通常包含提供商前缀
     return AIProvider.OPENROUTER;
   }
@@ -1074,14 +1077,14 @@ export const getAvailableModels = (): { model: LLMModel; provider: AIProvider }[
   if (process.env.REACT_APP_OPENROUTER_API_KEY) {
     // 默认内置的OpenRouter模型
     const defaultOpenRouterModels = [
-      { model: LLMModel.OPENROUTER_GEMINI_FLASH, provider: AIProvider.OPENROUTER },
       { model: LLMModel.OPENROUTER_GEMINI_FLASH_001, provider: AIProvider.OPENROUTER },
-      { model: LLMModel.OPENROUTER_GEMINI_PRO_EXP, provider: AIProvider.OPENROUTER },
-      { model: LLMModel.OPENROUTER_GEMINI_FLASH_THINKING, provider: AIProvider.OPENROUTER },
-      { model: LLMModel.OPENROUTER_CLAUDE_OPUS, provider: AIProvider.OPENROUTER },
-      { model: LLMModel.OPENROUTER_LLAMA, provider: AIProvider.OPENROUTER },
-      { model: LLMModel.OPENROUTER_MIXTRAL, provider: AIProvider.OPENROUTER },
-      { model: LLMModel.OPENROUTER_DEEPSEEK_V3, provider: AIProvider.OPENROUTER }
+      { model: LLMModel.OPENROUTER_DEEPSEEK_V3, provider: AIProvider.OPENROUTER },
+      { model: LLMModel.OPENROUTER_O3, provider: AIProvider.OPENROUTER },
+      { model: LLMModel.OPENROUTER_O4_MINI, provider: AIProvider.OPENROUTER },
+      { model: LLMModel.OPENROUTER_GEMINI_2_5_PRO, provider: AIProvider.OPENROUTER },
+      { model: LLMModel.OPENROUTER_GPT_4_1_MINI, provider: AIProvider.OPENROUTER },
+      { model: LLMModel.OPENROUTER_GPT_4_1, provider: AIProvider.OPENROUTER },
+      { model: LLMModel.OPENROUTER_DEEPSEEK_R1, provider: AIProvider.OPENROUTER }
     ];
     
     // 获取可配置的额外模型（支持从环境变量中配置）

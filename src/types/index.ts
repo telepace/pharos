@@ -58,14 +58,14 @@ export enum LLMModel {
   QWEN_PLUS_LATEST = 'qwen-plus-latest',
   QWEN_MAX = 'qwen-max',
   QWQ_PLUS = 'qwq-32b',
-  OPENROUTER_GEMINI_FLASH = 'google/gemini-2.0-flash-lite-001',
   OPENROUTER_GEMINI_FLASH_001 = 'google/gemini-2.0-flash-001',
-  OPENROUTER_GEMINI_PRO_EXP = 'google/gemini-2.0-pro-exp-02-05:free',
-  OPENROUTER_GEMINI_FLASH_THINKING = 'google/gemini-2.0-flash-thinking-exp:free',
-  OPENROUTER_CLAUDE_OPUS = 'anthropic/claude-3-opus',
-  OPENROUTER_LLAMA = 'meta-llama/llama-3-70b-instruct',
-  OPENROUTER_MIXTRAL = 'mistralai/mixtral-8x7b-instruct',
-  OPENROUTER_DEEPSEEK_V3 = 'deepseek/deepseek-chat-v3-0324'
+  OPENROUTER_DEEPSEEK_V3 = 'deepseek/deepseek-chat-v3-0324',
+  OPENROUTER_O3 = 'openai/o3',
+  OPENROUTER_O4_MINI = 'openai/o4-mini',
+  OPENROUTER_GEMINI_2_5_PRO = 'google/gemini-2.5-pro-preview-03-25',
+  OPENROUTER_GPT_4_1_MINI = 'openai/gpt-4.1-mini',
+  OPENROUTER_GPT_4_1 = 'openai/gpt-4.1',
+  OPENROUTER_DEEPSEEK_R1 = 'deepseek/deepseek-r1'
 }
 
 export enum AIProvider {
